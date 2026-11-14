@@ -7,6 +7,7 @@ import { SCALE, LEVELS } from '../levels/levels.js';
 import { S, L, W, world, key, scene, design, run, attempts, nameOf, stars, esc, fmtN, fmt1, fmtPct, runScenario, submission } from './state.js';
 import { FIELDS } from './worlds.js';
 import { bestHtml } from './best-panel.js';
+import { auditHtml } from './audit-panel.js';
 
 export const predScale = () => scene().predict.scale || 1;
 export const predError = (g, a) => {
@@ -263,6 +264,7 @@ function submissionHtml(lv, w, sub) {
         </li>`).join('')}</ol>
       ${guessed ? `<p class="muted">${guessed}</p>` : ''}
       ${sub.accepted ? bestHtml(lv.id, w, sub.results[0].log.result.costPerHour) : ''}
+      ${sub.accepted ? auditHtml(lv.id, w) : ''}
       ${next ? `<div class="btn-row">${next}</div>` : ''}
     </section>`;
 }
