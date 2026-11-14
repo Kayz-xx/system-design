@@ -2,8 +2,9 @@
 // The numbers come from src/levels/audit.js, which runs the simulator; this file only lays them out.
 import { audit, MONKEYS, MORNINGS, SKILL_SURVIVAL } from '../levels/audit.js';
 import { MONKEY_SCORES } from '../levels/monkey-scores.js';
-import { LEVELS, SCALE } from '../levels/levels.js';
-import { S, W, key, design, simDesign, world, esc, fmt1, fmtN } from './state.js';
+import { ruleWords } from '../levels/audit-words.js';
+import { askTutor } from '../ai/tutor.js';
+import { S, R, key, design, simDesign, world, esc, fmtN } from './state.js';
 
 // One audit per scene and design. Editing the design makes a fresh one.
 const cache = {};
@@ -13,43 +14,30 @@ export function currentAudit() { return cache[designKey()] || null; }
 
 export function runAudit() {
   const k = designKey();
-  if (!cache[k]) cache[k] = { ...audit(simDesign(design()), S.level, world(), MONKEY_SCORES[S.level][world()]), fresh: true };
+  if (!cache[k]) {
+    const a = cache[k] = { ...audit(simDesign(design()), S.level, world(), MONKEY_SCORES[S.level][world()]), fresh: true, note: null };
+    if (a.mildest) askAuditor(k, a);
+  }
   return cache[k];
+}
+
+// The auditor's note: Gemini words why the broken mornings break this design. The server reruns the
+// audit from the design alone. With no key or a failed check, no note is shown; the rule above still is.
+function askAuditor(k, a) {
+  a.note = { loading: true };
+  const d = design();
+  askTutor({ world: world(), level: S.level, design: { blocks: d.blocks, wires: d.wires } }, { url: '/api/audit/note', fallback: '', timeoutMs: 7000 })
+    .then((out) => {
+      a.note = out.text ? out : null;
+      const typing = document.activeElement && document.activeElement.closest && document.activeElement.closest('#side input, #side select');
+      if (designKey() === k && !typing && R.side) R.side();
+    });
 }
 
 // The morning the Watch button replays: the mildest one that still breaks the design.
 export function auditMorning() {
   const a = currentAudit();
   return a && a.mildest ? a.mildest : null;
-}
-
-// Plain words for one rule condition, in the scene's world.
-function condWords(c, w, noun) {
-  const cafe = w === 'cafe', Wd = W();
-  const rate = (v) => (cafe ? `${fmt1(v / SCALE)} ${noun} a minute` : `${fmtN(v)} ${noun} a second`);
-  const dur = (v) => (cafe ? `${v} minutes` : `${v} seconds`);
-  const more = c.op === '>=' ? 'or more' : 'or less';
-  const when = c.op === '>=' ? 'or later' : 'or earlier';
-  switch (c.dim) {
-    case 'base': return cafe ? `a normal morning brings ${rate(c.value)} ${more}` : `normal traffic is ${rate(c.value)} ${more}`;
-    case 'spike': return cafe ? 'a rush comes' : 'a spike comes';
-    case 'spikeLoad': return cafe ? `the rush brings ${rate(c.value)} ${more}` : `the spike reaches ${rate(c.value)} ${more}`;
-    case 'spikeDur': return cafe ? `the rush lasts ${dur(c.value)} ${more}` : `the spike lasts ${dur(c.value)} ${more}`;
-    case 'spikeT': return cafe ? `the rush starts at ${Wd.clock(c.value)} ${when}` : `the spike starts at ${Wd.clock(c.value)} ${when}`;
-    case 'fail': return cafe ? 'a barista goes home sick' : 'a copy crashes';
-    case 'failT': return cafe ? `a barista goes home sick at ${Wd.clock(c.value)} ${when}` : `a copy crashes at ${Wd.clock(c.value)} ${when}`;
-    case 'failDur': return cafe ? `the sick barista is out for ${dur(c.value)} ${more}` : `the crash lasts ${dur(c.value)} ${more}`;
-    case 'flush': return cafe ? 'the fridge sells out' : 'the cache restarts empty';
-    case 'flushT': return cafe ? `the fridge sells out at ${Wd.clock(c.value)} ${when}` : `the cache restarts at ${Wd.clock(c.value)} ${when}`;
-    default: return '';
-  }
-}
-
-export function ruleWords(rule, w, levelId) {
-  if (!rule || !rule.conds.length) return '';
-  const lv = LEVELS.find((l) => l.id === levelId);
-  const noun = (lv.audit.noun && lv.audit.noun[w]) || (w === 'cafe' ? 'customers' : 'requests');
-  return rule.conds.map((c) => condWords(c, w, noun)).join(' and ');
 }
 
 // Ten bars: how many monkeys landed in each tenth of the mornings. Yours is marked.
@@ -94,6 +82,8 @@ export function auditHtml(levelId, w) {
     breaks = rule
       ? `<p><b>${cafe ? 'It breaks when' : 'It fails when'}</b> ${esc(rule)}.<small class="muted"> ${a.rule.tp} of ${fails} broken ${cafe ? 'mornings' : 'scenarios'} fit this${a.rule.fp ? `, and ${a.rule.fp} that fit it held up` : ''}.</small></p>`
       : `<p class="muted">${cafe ? 'The broken mornings share no simple pattern.' : 'The failures share no simple pattern.'}</p>`;
+    if (a.note && a.note.loading) breaks += `<div class="hint" aria-busy="true"><b>Auditor</b><span class="muted">${cafe ? 'The auditor is reading the broken mornings…' : 'The auditor is reading the failing runs…'}</span></div>`;
+    else if (a.note) breaks += `<div class="hint"><b>Auditor · ${cafe ? 'from the mildest broken morning' : 'from the mildest failing run'}</b>${esc(a.note.text)}</div>`;
     breaks += `<div class="btn-row"><button class="btn small" id="audit-watch">${cafe ? 'Watch the mildest morning that breaks it' : 'Watch the mildest failing scenario'}</button></div>`;
   }
   return `<div class="audit ${skill ? 'skill' : 'lucky'}" aria-label="Audit">

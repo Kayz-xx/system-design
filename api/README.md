@@ -33,3 +33,13 @@ Without a key the endpoint answers 503 and the app shows the level's template hi
 - The model only chooses among those and writes a story. It cannot set numbers; stories with digits, software words in the coffee shop, or the wrong length fall back to a template.
 - `facts` states the incident from its real numbers, so show it next to the story.
 - The browser loop (`src/ai/chaos.js`) re-simulates every attack before showing it, retries up to five times, and runs the same search locally if the endpoint is unreachable.
+
+## POST /api/audit/note
+
+The auditor's note under the audit card. Body: `{ world, level, design }`. The server reruns the whole audit
+(`src/levels/audit.js`) from the design alone, then asks Gemini to explain in up to three sentences why the
+mornings matching the failure rule break the design, using the log of the mildest failing morning. The reply
+passes the same check as the tutor's (`rejectReason`).
+
+- 200 `{ text, survived }`, where `text` is `null` when nothing broke (no model call is made).
+- 400 bad input, 503 no key, 502 model error or failed check, 504 timeout. The card then shows no note.
