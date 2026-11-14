@@ -89,7 +89,7 @@ Request:
 { "world": "cafe", "level": "l1", "design": {}, "scenario": {}, "events": [], "result": {}, "prediction": { "block": "s1", "value": 20, "actual": 50 }, "hintStep": 1 }
 ```
 
-Response: `{ "text": "…" }`. The text may mention only events in `events`. Hint steps: 1 asks a question, 2 names the concept, 3 points at a block. It never gives the finished design. On any failure the client shows the level's template hint instead.
+Response: `{ "text": "…", "step": 1 }`. The server ignores the client's `events` and reruns `simulate()` on the cleaned design, so the text may mention only events in that log; the reply is checked before it is returned. Errors: 400 bad request, 503 no key, 502 OpenAI failed or the reply failed the check, 504 timeout. The client gives up after 4 s. Hint steps: 1 asks a question, 2 names the concept, 3 points at a block. It never gives the finished design. On any failure the client shows the level's template hint instead.
 
 ### `POST /api/chaos/plan`
 
@@ -105,7 +105,13 @@ Response:
 
 ```json
 { "attack": { "spike": { "t": 50, "dur": 15, "reads": 180, "writes": 0 }, "serverFail": { "t": 55, "dur": 30 } },
-  "story": "A tour bus pulls up at 8:20, and five minutes later a barista burns their hand." }
+  "story": "A tour bus pulls up outside. Then a barista burns their hand and goes home.",
+  "facts": "From 8:20, 3.6 customers a minute arrive for 15 minutes. At 8:25, one of the Baristas is out for 30 minutes.",
+  "source": "ai" }
 ```
+
+`source` is `ai` (the model picked and told it), `ai-pick` (the model picked; its story failed the check, so a template story is used) or `search` (no model; the mildest attack the search found). `facts` states the attack from its numbers; show it next to `story`, which never contains numbers. When no attack within the budget breaks the design, the response is `{ "attack": null, "story": null, "survived": true }`.
+
+The attack's numbers come from a deterministic search (`src/ai/attacks.js`) over shocks within the budget, never from the model. An attack "breaks" a design when the error or slow check fails; the cost check is not counted.
 
 `attack` is merged into the scenario's shocks. The client runs `simulate()` with it. If the design still passes, it sends the result back as a previous attempt, up to five attempts. Only an attack the simulator confirms is shown to the learner.
