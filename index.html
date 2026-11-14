@@ -3,61 +3,49 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="A little coffee shop for big system-design ideas. Build, predict, and watch your café come to life.">
-<title>Little Systems Café · System Design Sandbox</title>
+<meta name="description" content="A tiny coffee shop. A hands-on systems lab. Learn by making the morning work.">
+<title>Little Systems Café</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="styles/app.css">
 </head>
 <body>
-<a class="skip-link" href="#main">Skip to the workbench</a>
+<a class="skip-link" href="#main">Skip to the café floor</a>
 <header class="top">
-  <a class="brand" href="./" aria-label="Little Systems Café home">
-    <span class="brand-mark" aria-hidden="true">☕</span>
-    <span><b>Little Systems <em>Café</em></b><small>A system design sandbox</small></span>
-  </a>
-  <div class="top-note"><span class="status-dot" aria-hidden="true"></span> A little practice. A lot of possibility.</div>
-  <div class="progress-pill" id="progress" aria-live="polite" title="Each chapter: pass the café, pass the software, and make your first software prediction within 15%.">0 stars</div>
+  <a class="brand" href="./" aria-label="Little Systems Café home"><span aria-hidden="true">☕</span><b>Little Systems <em>Café</em></b></a>
+  <details class="chapter-menu"><summary id="day-label">Day 1 · Morning rush</summary><nav id="tabs" aria-label="Choose a chapter"></nav></details>
+  <span class="progress" id="progress" aria-label="Earned stars"></span>
 </header>
-<section class="welcome" aria-labelledby="welcome-title">
-  <div><p class="eyebrow">Make yourself a little wiser</p><h1 id="welcome-title">Small café. <em>Big ideas.</em></h1>
-  <p class="welcome-copy">Build a coffee shop that can handle the rush.<br>Then discover the software system hiding inside it.</p></div>
-  <div class="recipe"><span class="label">Your recipe for learning</span><ol><li><span>01</span> Build your shop</li><li><span>02</span> Make a prediction</li><li><span>03</span> Watch &amp; improve</li></ol></div>
-</section>
-<nav class="tabs" id="tabs" aria-label="Choose a chapter"></nav>
-<div class="app" id="app">
-  <main class="main" id="main" tabindex="-1">
-    <div class="workbench-title"><div><span class="eyebrow">The workbench</span><h2>Your little corner of the world</h2></div><span class="desk-note">Arrange. Connect. Experiment.</span></div>
-    <aside class="pal" id="pal" aria-label="Shop equipment"></aside>
-    <div class="edit-tools" role="group" aria-label="Design history">
-      <div class="btn-row">
-        <button class="btn small" id="undo-design" disabled title="Undo design edit (Ctrl or Command + Z)">↶ Undo</button>
-        <button class="btn small" id="redo-design" disabled title="Redo design edit (Ctrl or Command + Shift + Z)">↷ Redo</button>
-      </div>
-      <button class="btn small" id="reset-design" title="Restore this scene’s starting design. You can undo this.">Reset shop</button>
+<main class="app" id="app">
+  <section class="mission" aria-label="Today's experiment"><div><p class="eyebrow" id="chapter-marker"></p><h1 id="mission-title"></h1><p id="mission-sub"></p></div><button class="text-btn" id="brief-open">Read the brief ↗</button></section>
+  <section class="playfield" id="main" tabindex="-1" aria-label="Interactive café floor">
+    <div class="floor-toolbar">
+      <details id="equipment-menu" class="equipment-menu"><summary>＋ Equipment</summary><aside id="pal" aria-label="Add equipment"></aside></details>
+      <button class="icon-btn" id="undo-design" title="Undo design edit" aria-label="Undo design edit">↶</button><button class="icon-btn" id="redo-design" title="Redo design edit" aria-label="Redo design edit">↷</button>
+      <details class="connection-tools" id="connection-tools"><summary aria-label="More tools">•••</summary><div class="tools-popover"><div id="connection-body"></div><button class="text-btn" id="reset-design">Reset shop</button></div></details>
+      <div class="floor-cost"><span id="cost"></span><span id="budget"></span></div>
     </div>
-    <a class="btn small jump-predict" href="#prediction">Make a prediction ↓</a>
-    <details class="connection-tools" id="connection-tools">
-      <summary>Connect &amp; manage equipment <span>Keyboard friendly</span></summary>
-      <div id="connection-body"></div>
-    </details>
     <div class="canvas-wrap" id="canvas-wrap">
-      <div class="canvas-head"><span class="world" id="world-name"></span><span>Running cost <span class="cost" id="cost"></span> <span class="muted" id="budget"></span></span></div>
-      <div class="board-scroll" tabindex="0" role="region" aria-label="Shop floor. Scroll horizontally to explore the whole board.">
-        <div class="stage" id="stage">
-          <svg class="wires" id="wires" aria-hidden="true"></svg>
-          <canvas class="fx" id="fx" width="900" height="400" aria-hidden="true"></canvas>
-          <div class="nodes" id="nodes"></div>
-        </div>
+      <div class="board-scroll" tabindex="0" role="region" aria-label="Café floor. Scroll to explore, or use Fit floor.">
+        <div class="stage-space" id="stage-space"><div class="stage" id="stage">
+          <svg class="room-art cafe-set" viewBox="0 0 900 400" aria-hidden="true">
+            <rect class="room-floor" x="10" y="25" width="880" height="340" rx="100"/>
+            <path class="floor-seam" d="M80 100h740M40 180h820M40 260h820M100 340h700M150 35v325M300 25v340M450 25v340M600 25v340M750 35v325"/>
+            <g class="window-art"><path d="M685 110V60a50 50 0 0 1 100 0v50z"/><path d="M735 15v95M685 65h100"/><path class="sun-ray" d="M685 112l-45 50h145l0-50"/></g>
+            <g class="plant-art"><path d="M795 295h42l-7 40h-28z"/><path d="M817 300v-70m0 38c-35-1-32-27-32-27 29-3 32 27 32 27zm0-16c31-1 28-25 28-25-26-2-28 25-28 25z"/></g>
+            <g class="cafe-sign"><path d="M80 35h145v43H80z"/><text x="152" y="62" text-anchor="middle">one thing at a time.</text></g>
+          </svg>
+          <svg class="wires" id="wires" aria-hidden="true"></svg><canvas class="fx" id="fx" width="900" height="400" aria-hidden="true"></canvas><div class="nodes" id="nodes"></div>
+        </div></div>
       </div>
       <div id="overlay"></div>
-      <div class="board-key"><span><i class="key-dot"></i> Customers follow the connections</span><span>Select equipment to adjust it ↗</span></div>
     </div>
-    <section class="run" id="run" aria-label="Run"></section>
-  </main>
-  <aside class="side" id="side" aria-label="Chapter brief, predictions and results"></aside>
-</div>
-<footer class="foot"><b>Made for curious minds.</b><p>The simulator teaches intuition, not capacity planning: real systems slow down before they saturate. One café minute becomes one software second.</p><span>Inspired by the <a href="https://github.com/donnemartin/system-design-primer" target="_blank" rel="noopener">System Design Primer</a> by Donne Martin · CC BY 4.0</span></footer>
+    <div class="floor-caption"><span id="world-name"></span><div><button class="text-btn" id="fit-floor">Fit floor</button><button class="text-btn" id="zoom-floor" aria-label="Zoom in on the floor">＋</button></div></div>
+  </section>
+  <aside class="side" id="side" aria-label="Current action"></aside>
+  <section class="run" id="run" aria-label="Experiment timeline"></section>
+</main>
+<footer class="foot"><span id="board-help">Drag to arrange · Pull a dot to connect · Enter to edit</span><details><summary>About this little lab</summary><p>A simplified simulator for building intuition. Inspired by the <a href="https://github.com/donnemartin/system-design-primer" target="_blank" rel="noopener">System Design Primer</a>, Donne Martin · CC BY 4.0. One café minute becomes one software second.</p></details></footer>
 <script type="module" src="src/ui/main.js"></script>
 </body>
 </html>

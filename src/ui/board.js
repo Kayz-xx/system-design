@@ -1,9 +1,9 @@
 // The board: blocks, wires, bottleneck callout, transform card and toast.
 import { CACHE_SIZES, designCost } from '../sim/sim.js';
-import { S, L, W, world, scene, design, run, tickAt, esc, fmtN, fmt1 } from './state.js';
-import { icon } from './worlds.js';
+import { S, L, W, world, scene, design, run, tickAt, esc, fmtN, fmt1, runScenario } from './state.js';
+import { icon, artifact } from './worlds.js';
 
-export const NODE_W = 150, NODE_H = 84;
+export const NODE_W = 150, NODE_H = 118;
 
 function nodeState(b, r) {
   if (!r) return { cls: '', chip: '' };
@@ -71,8 +71,9 @@ export function geom(d, a, b) {
 const pathOf = (g) => `M${g[0]},${g[1]} C${g[2]},${g[3]} ${g[4]},${g[5]} ${g[6]},${g[7]}`;
 
 export function renderBoard() {
-  const d = design(), sc = scene().scenario, Wd = W(), w = world();
+  const d = design(), Wd = W(), w = world();
   const r = run();
+  const sc = r && !r.stale ? runScenario() : scene().scenario;
   const tick = r && !r.stale ? tickAt(r) : null;
   const wires = d.wires.map(([a, b], i) => {
     const g = geom(d, a, b); if (!g) return '';
@@ -85,17 +86,18 @@ export function renderBoard() {
   const tr = tick ? tick.traffic : sc.base;
   const spiking = tick && tr.reads + tr.writes > sc.base.reads + sc.base.writes;
   let html = `<div class="node traffic" style="left:${d.traffic.x}px;top:${d.traffic.y}px" data-node="traffic">
-      <div class="node-top"><span class="node-type">${icon(w, 'traffic')}${Wd.type.traffic}</span>${spiking ? `<span class="chip warn">${w === 'cafe' ? 'Rush' : 'Spike'}</span>` : ''}</div>
+      ${artifact(w, 'traffic')}<div class="node-top"><span class="node-type">${icon(w, 'traffic')}${Wd.type.traffic}</span>${spiking ? `<span class="chip warn">${w === 'cafe' ? 'Rush' : 'Spike'}</span>` : ''}</div>
       <div class="node-name">${Wd.trafficName}</div>
       <div class="node-sub">${Wd.rate(tr.reads + tr.writes)}</div>
       <button class="port" data-port="traffic" aria-label="Connect from ${Wd.trafficName}"></button>
     </div>`;
+  if (spiking && w === 'cafe' && L().id === 'l1') html += `<div class="train-arrival" aria-hidden="true"><svg viewBox="0 0 160 60"><rect class="art-body" x="8" y="8" width="143" height="34" rx="10"/><path class="art-accent" d="M9 31h141v7H9z"/><path class="art-glass" d="M20 16h20v10H20zm30 0h20v10H50zm30 0h20v10H80zm30 0h20v10h-20z"/><circle class="art-hair" cx="35" cy="44" r="6"/><circle class="art-hair" cx="124" cy="44" r="6"/></svg><span>The ${Wd.clock(sc.spike.t)} train</span></div>`;
   d.blocks.forEach((b) => {
     const rb = tick ? tick.blocks[b.id] : null;
     const st = nodeState(b, rb);
     const sel = S.sel && S.sel.kind === 'block' && S.sel.id === b.id;
-    html += `<div class="node ${st.cls}${sel ? ' sel' : ''}" style="left:${b.x}px;top:${b.y}px" data-node="${b.id}" tabindex="0" aria-label="${esc(b.names[w])}">
-      <span class="port-in"></span>
+    html += `<div class="node ${st.cls}${sel ? ' sel' : ''}" style="left:${b.x}px;top:${b.y}px" data-node="${b.id}" data-type="${b.type}" tabindex="0" aria-label="${esc(b.names[w])}">
+      ${artifact(w, b.type, rb && Number.isFinite(rb.alive) ? rb.alive : b.copies || 1)}<span class="port-in"></span>
       <div class="node-top"><span class="node-type">${icon(w, b.type)}${esc(Wd.type[b.type])}</span>${st.chip}</div>
       <div class="node-name">${esc(b.names[w])}</div>
       <div class="node-sub">${nodeSub(b, rb)}</div>
@@ -107,14 +109,15 @@ export function renderBoard() {
     const ff = r.log.result.firstFailure, b = d.blocks.find((x) => x.id === ff.block);
     if (b) html += `<div class="callout" style="left:${b.x + NODE_W / 2}px;top:${b.y - 8}px">${Wd.callout(ff.t)}</div>`;
   }
+  if (!d.blocks.some((b) => b.type === 'server') && !(r && !r.done)) html += `<button class="ghost-placement" data-add="server" style="left:250px;top:150px">＋ Place ${w === 'cafe' ? 'a barista' : 'a server'}</button>`;
   document.getElementById('nodes').innerHTML = html;
 
   const cost = designCost(d);
   const c = document.getElementById('cost');
   c.textContent = Wd.cost(cost);
   c.classList.toggle('over', cost > sc.targets.cost + 1e-9);
-  document.getElementById('budget').textContent = `· budget ${Wd.cost(sc.targets.cost)}`;
-  document.getElementById('world-name').textContent = w === 'cafe' ? `The coffee shop · ${L().name}` : `The same thing, as software · ${L().concept}`;
+  document.getElementById('budget').textContent = `/ ${Wd.cost(sc.targets.cost)} budget`;
+  document.getElementById('world-name').textContent = w === 'cafe' ? 'Your little café' : 'The same system, in software';
 }
 
 export function renderOverlay() {

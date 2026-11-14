@@ -4,7 +4,7 @@ import { SCALE } from '../levels/levels.js';
 import { world, scene, design, run, tickAt, typeOf, fmtN, runScenario } from './state.js';
 import { geom, NODE_W, NODE_H } from './board.js';
 
-export const SPEED = 42; // ticks per second of playback
+export const SPEED = 18; // ticks per second of playback
 export const fx = { parts: [], drops: [], acc: {}, last: 0, colors: null, playing: false };
 
 let canvas, ctx;
@@ -48,7 +48,10 @@ function wireFlow(d, tick, a, b) {
 function dot(x, y, color, r, alpha) {
   ctx.globalAlpha = alpha;
   ctx.fillStyle = color;
-  if (world() === 'cafe') { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); }
+  if (world() === 'cafe') {
+    ctx.beginPath(); ctx.arc(x, y - r, r, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.roundRect(x - r * 1.2, y + 1, r * 2.4, r * 2.6, r); ctx.fill();
+  }
   else ctx.fillRect(x - r, y - r, r * 2, r * 2);
 }
 

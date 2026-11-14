@@ -48,37 +48,20 @@ function chartSvg(o, width) {
 }
 
 export function renderRun() {
-  const el = document.getElementById('run');
-  const r = run(), sc = runScenario(), Wd = W();
-  if (!r) {
-    el.innerHTML = `<div class="run-head"><span class="label">Run</span></div><p class="empty">${world() === 'cafe'
-      ? 'Make your guess, then open the doors. You’ll see every customer arrive, wait and get served.'
-      : 'Predict first, then run. Traffic, latency and errors for each second appear here.'}</p>`;
-    return;
-  }
+  const el = document.getElementById('run'), r = run(), sc = runScenario(), Wd = W();
+  if (!r) { el.innerHTML = ''; return; }
   const res = r.log.result, done = r.done;
-  const check = (ok, label, val, tgt) => `<span class="check ${done ? (ok ? 'ok' : 'bad') : ''}"><span class="mark">${done ? (ok ? '✓' : '✗') : '·'}</span>${label} <span class="mono">${done ? val : '…'}</span> <span class="muted mono">≤ ${tgt}</span></span>`;
-  el.innerHTML = `<div class="run-head">
-      <span class="label">${r.stale ? 'Previous run' : r.label ? esc(r.label) : 'Run results'}</span>
-      <div class="checks">
-        ${check(res.checks.errors, Wd.checks.errors, fmtPct(res.errorRate), fmtPct(sc.targets.errorRate))}
-        ${check(res.checks.slow, Wd.checks.slow(sc.latencyTargetMs), fmtPct(res.slowShare), fmtPct(sc.targets.slowShare))}
-        ${check(res.checks.cost, 'Cost', Wd.cost(res.costPerHour), Wd.cost(sc.targets.cost))}
-      </div>
-      <div class="scrub">
-        ${r.stale ? '<span class="chip warn">Design changed since this run</span>' : ''}
-        <label class="muted mono" for="scrub" id="scrub-label"></label>
-        <input id="scrub" type="range" min="0" max="${r.log.ticks.length - 1}" value="${r.t}" ${done ? '' : 'disabled'}>
-        <button class="btn small" id="replay" ${done ? '' : 'disabled'}>Replay</button>
-      </div>
-    </div>
-    ${r.stale ? '<p class="hint" role="status">Your design has changed. These charts show the previous run. Make a new prediction to test your edits.</p>' : ''}
-    <div class="readout" id="readout"></div>
-    <div class="charts">
-      <div class="chart" data-chart="traffic"><h4>${Wd.charts.traffic}</h4><div class="plot"></div></div>
-      <div class="chart" data-chart="latency"><h4>${Wd.charts.latency}</h4><div class="plot"></div></div>
-      <div class="chart" data-chart="errors"><h4>${Wd.charts.errors}</h4><div class="plot"></div></div>
-    </div>`;
+  const check = (ok, label, val, tgt) => `<span class="check ${done ? ok ? 'ok' : 'bad' : ''}"><span class="mark">${done ? ok ? '✓' : '✗' : '·'}</span>${label} <span class="mono">${done ? val : '…'}</span> <span class="muted mono">≤ ${tgt}</span></span>`;
+  el.innerHTML = `<div class="timeline"><label for="scrub" id="scrub-label"></label><input id="scrub" type="range" min="0" max="${r.log.ticks.length - 1}" value="${r.t}" ${done ? '' : 'disabled'}><span class="live-note" id="live-note"></span>${done ? '<button class="text-btn" id="replay">Replay ↻</button>' : ''}</div>
+    <details class="analysis-drawer" id="analysis-drawer"><summary>${r.stale ? 'Previous run · your design has changed' : 'Look at the numbers'} ↗</summary><div class="analysis-content">
+      <div class="label">${r.stale ? 'Previous run' : r.label ? esc(r.label) : 'Run results'}</div>
+      ${r.stale ? '<p class="hint" role="status">Your design has changed. These charts show the previous run. Make a new prediction to test your edits.</p>' : ''}
+      <div class="checks">${check(res.checks.errors, Wd.checks.errors, fmtPct(res.errorRate), fmtPct(sc.targets.errorRate))}${check(res.checks.slow, Wd.checks.slow(sc.latencyTargetMs), fmtPct(res.slowShare), fmtPct(sc.targets.slowShare))}${check(res.checks.cost, 'Cost', Wd.cost(res.costPerHour), Wd.cost(sc.targets.cost))}</div>
+      <div class="readout" id="readout"></div><div class="charts">
+        <div class="chart" data-chart="traffic"><h4>${Wd.charts.traffic}</h4><div class="plot"></div></div>
+        <div class="chart" data-chart="latency"><h4>${Wd.charts.latency}</h4><div class="plot"></div></div>
+        <div class="chart" data-chart="errors"><h4>${Wd.charts.errors}</h4><div class="plot"></div></div>
+      </div></div></details>`;
   renderRunBody();
 }
 
@@ -94,6 +77,17 @@ export function renderRunBody() {
   document.getElementById('scrub-label').textContent = `${Wd.clock(t)} / ${Wd.clock(N - 1)}`;
   const scrub = document.getElementById('scrub');
   if (scrub && document.activeElement !== scrub) scrub.value = t;
+  const live = document.getElementById('live-note');
+  if (live) {
+    const queue = Math.round(rk.queue / Wd.scale);
+    const shock = r.log.events.filter((e) => e.type === 'shock' && e.t <= t).at(-1);
+    const lines = world() === 'cafe'
+      ? { spike: 'Here comes the rush.', spikeEnd: 'The rush is over.', serverFail: 'One barista goes home.', serverBack: 'A replacement arrives.', cacheFlush: 'The fridge is empty.' }
+      : { spike: 'Traffic is spiking.', spikeEnd: 'Traffic settles down.', serverFail: 'A server is down.', serverBack: 'The server is back.', cacheFlush: 'The cache is empty.' };
+    live.textContent = queue ? `${queue} ${world() === 'cafe' ? 'waiting' : 'queued'}` : r.done ? 'The run is over.' : shock ? lines[shock.shock] || 'Watch the flow.' : world() === 'cafe' ? 'A quiet start to the morning.' : 'Normal traffic.';
+  }
+  const drawer = document.getElementById('analysis-drawer');
+  if (drawer && !drawer.open) return;
   const cv = Wd.chartVal;
   document.getElementById('readout').textContent = world() === 'cafe'
     ? `${Wd.clock(rt)} · ${fmt1(cv.traffic(rk.traffic.reads + rk.traffic.writes))} customers/min · longest wait ${fmt1(cv.latency(rk.latencyMs))} min · ${fmt1(cv.errors(rk.dropped))} walking out/min`

@@ -25,6 +25,8 @@ export const starterOf = (l) => l.starter || l.design;
 
 export const S = {
   level: 'l1',
+  labPhase: {},  // per-scene task: build, predict, submit, review, submission or brief
+  zoom: 1,
   scene: Object.fromEntries(LEVELS.map((l) => [l.id, 'cafe'])),
   designs: Object.fromEntries(LEVELS.map((l) => [l.id, { cafe: clone(starterOf(l)), software: clone(starterOf(l)) }])),
   pred: {},      // key -> { block, value }

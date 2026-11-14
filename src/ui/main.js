@@ -11,24 +11,53 @@ import { renderSide, predScale, predError } from './coach.js';
 
 /* ---------- Header and palette ---------- */
 function renderTabs() {
-  document.getElementById('tabs').style.setProperty('--chapter-count', LEVELS.length);
+  document.getElementById('day-label').textContent = `Day ${L().n} · ${L().name}`;
   document.getElementById('tabs').innerHTML = LEVELS.map((l) => {
-    const st = stars(l.id), solved = st[0] && st[1];
-    const tried = ['cafe', 'software'].some((w) => S.submits[l.id + ':' + w]);
-    const status = solved ? '<span class="solved">Solved</span>' : tried ? '<span class="tried">Attempted</span>' : '';
-    return `<button class="tab" ${S.level === l.id ? 'aria-current="page"' : ''} data-level="${l.id}"><span class="chapter-number">${String(l.n).padStart(2, '0')}</span><span class="chapter-copy"><b>${esc(l.name)}</b><small><span class="diff diff-${l.difficulty.toLowerCase()}">${esc(l.difficulty)}</span> ${esc(l.concept)} ${status}</small></span><span class="stars" aria-label="${st.filter(Boolean).length} of 3 stars">${st.map((s) => `<span class="${s ? '' : 'off'}">★</span>`).join('')}</span></button>`;
+    const st = stars(l.id);
+    return `<button class="tab" ${S.level === l.id ? 'aria-current="page"' : ''} data-level="${l.id}"><span class="chapter-number">${String(l.n).padStart(2, '0')}</span><span class="chapter-copy"><b>${esc(l.name)}</b><small>${esc(l.concept)}</small></span><span class="stars" aria-label="${st.filter(Boolean).length} of 3 stars">${st.map((x) => x ? '★' : '☆').join('')}</span></button>`;
   }).join('');
   const earned = LEVELS.flatMap((l) => stars(l.id)).filter(Boolean).length;
-  document.getElementById('progress').textContent = `★ ${earned} / ${LEVELS.length * 3} stars`;
+  document.getElementById('progress').textContent = `☆ ${earned}`;
+  document.getElementById('progress').setAttribute('aria-label', `${earned} of ${LEVELS.length * 3} stars`);
+  renderMission();
+}
+
+function renderMission() {
+  const sc = scene().scenario, cafe = world() === 'cafe';
+  const unit = cafe ? 'customers/min' : 'requests/s', scale = W().scale;
+  const base = (sc.base.reads + sc.base.writes) / scale;
+  const shock = sc.spike ? ` → ${(sc.spike.reads + sc.spike.writes) / scale} at ${W().clock(sc.spike.t)}`
+    : sc.serverFail ? ` · one ${cafe ? 'barista leaves' : 'server fails'} at ${W().clock(sc.serverFail.t)}`
+      : sc.cacheFlush ? ` · ${cafe ? 'fridge empties' : 'cache restarts'} at ${W().clock(sc.cacheFlush.t)}` : '';
+  document.getElementById('chapter-marker').textContent = cafe ? `A small experiment · Day ${L().n}` : `Same idea · New names`;
+  document.getElementById('mission-title').textContent = scene().title;
+  document.getElementById('mission-sub').textContent = `${base} ${unit}${shock}. ${cafe ? 'Make the morning work.' : 'Build a system that holds up.'}`;
+}
+
+function fitFloor(force = false) {
+  const view = document.getElementById('board-scroll') || document.querySelector('.board-scroll');
+  if (!view) return;
+  const fitted = Math.min(1.1, view.clientWidth / 900, Math.max(180, view.clientHeight) / 400);
+  S.zoom = force ? fitted : Math.max(view.clientWidth < 700 ? .68 : .8, fitted);
+  document.getElementById('stage-space').style.setProperty('--zoom', S.zoom);
+}
+
+function setTask(phase) {
+  S.labPhase[key()] = phase; S.sel = null; S.banner = null;
+  document.getElementById('equipment-menu').open = false;
+  document.getElementById('connection-tools').open = false;
+  document.querySelector('.chapter-menu').open = false;
+  renderSide(); renderOverlay(); updateWorkbench();
+  if (phase === 'predict') document.getElementById('p-block')?.focus();
+  if (phase === 'submit') document.getElementById('p-tests')?.focus();
+  if (phase === 'build') document.querySelector('#side .btn.primary')?.focus({ preventScroll: true });
 }
 
 function renderPalette() {
   const w = world(), Wd = W();
   const costOf = (type) => Wd.cost(blockCost(Object.assign({ type, copies: 1 }, DEFAULTS[type])));
   const row = (type) => `<button class="pal-btn" data-add="${type}">${icon(w, type)}<span class="t">${esc(Wd.palette[type])}<small>${costOf(type)}</small></span></button>`;
-  document.getElementById('pal').innerHTML = `<div class="label">${w === 'cafe' ? 'Hire and buy' : 'Blocks'}</div>
-    ${row('server')}${row('loadBalancer')}${row('cache')}${row('database')}${row('queue')}
-    <p class="pal-note" id="board-help">Choose equipment to add it. Drag its right dot to connect, or use the connection menu below. On focused equipment: Enter opens settings; arrow keys move it.</p>`;
+  document.getElementById('pal').innerHTML = ['server', 'loadBalancer', 'cache', 'database', 'queue'].map(row).join('');
 }
 
 // Keep keyboard focus on the same equipment while board markup is refreshed.
@@ -107,7 +136,7 @@ function updateRunReadiness() {
   const ready = predictionReady(), playing = isPlaying();
   const btn = document.getElementById('run-btn'); if (btn) btn.disabled = playing || !ready;
   const note = document.getElementById('ready-note');
-  if (note) note.textContent = ready ? '' : 'Finish your settings and commit to a guess first.';
+  if (note) note.textContent = ready ? '' : 'Choose a block and a number.';
   const sub = document.getElementById('submit-btn'); if (sub) sub.disabled = playing || !submitReady();
   const subNote = document.getElementById('submit-note');
   if (subNote) subNote.textContent = submitReady() ? '' : design().blocks.length ? 'Guess how many tests it will pass.' : 'Build something first.';
@@ -120,7 +149,7 @@ function updateWorkbench() {
     el.disabled = playing || (el.id === 'connect-btn' && !design().blocks.length);
   });
   updateRunReadiness();
-  document.querySelector('.board-key span').innerHTML = `<i class="key-dot"></i> ${world() === 'cafe' ? 'Customers' : 'Requests'} follow the connections`;
+
 }
 
 function renderAll() {
@@ -129,6 +158,7 @@ function renderAll() {
   fx.playing = isPlaying();
   invalidateColors();
   renderTabs(); renderPalette(); renderBoard(); renderOverlay(); renderRun(); renderSide(); updateWorkbench();
+  requestAnimationFrame(() => fitFloor());
   if (focusedId) document.getElementById(focusedId)?.focus({ preventScroll: true });
 }
 
@@ -147,7 +177,7 @@ function designChanged() {
   const r = run(); if (r) r.stale = true;
   const sub = submission(); if (sub) sub.stale = true;
   document.querySelector('#side [aria-label="Submission"]')?.remove();
-  S.problems[key()] = [];
+  S.problems[key()] = []; S.labPhase[key()] = 'build';
   document.querySelector('#side [aria-label="Result"]')?.remove();
   document.querySelector('#side [aria-label="Tutor"]')?.remove();
   const p = S.pred[key()];
@@ -162,7 +192,7 @@ function historyAction(action) {
   if (!changed) return;
   S.sel = null; S.banner = null; S.hoverT = null; resetFx();
   designChanged(); renderAll();
-  toast(action === 'reset' ? 'Starting design restored. Undo brings your changes back.' : action === 'undo' ? 'Design edit undone.' : 'Design edit restored.');
+  if (action === 'reset') toast('Starting layout restored. Undo brings it back.');
   const focus = document.getElementById(action === 'reset' ? 'undo-design' : `${action}-design`);
   if (focus && !focus.disabled) focus.focus({ preventScroll: true });
   else document.getElementById(action === 'redo' ? 'undo-design' : 'redo-design')?.focus({ preventScroll: true });
@@ -170,6 +200,7 @@ function historyAction(action) {
 
 function addBlock(type) {
   const d = design();
+  document.getElementById('equipment-menu').open = false;
   const n = d.blocks.filter((b) => b.type === type).length;
   const names = {};
   Object.keys(WORLDS).forEach((x) => { names[x] = WORLDS[x].defaultName[type] + (n ? ' ' + (n + 1) : ''); });
@@ -198,7 +229,7 @@ function startRun() {
   const guess = parseFloat(p.value);
   const actualBlock = log.result.firstFailure ? log.result.firstFailure.block : 'none';
   attempts().push({ guessBlock: p.block, actualBlock, blockRight: p.block === actualBlock, guess, actual, err: predError(guess, actual), passed: log.result.passed });
-  S.pred[key()] = {}; S.hint[key()] = 0; S.sel = null;
+  S.pred[key()] = {}; S.hint[key()] = 0; S.sel = null; S.labPhase[key()] = 'review';
   play(key(), log);
 }
 
@@ -212,6 +243,7 @@ function startSubmit() {
   S.problems[key()] = problems;
   if (problems.length) { renderSide(); updateWorkbench(); return; }
   const g = grade(sd, S.level, world());
+  S.labPhase[key()] = 'submission';
   S.submits[key()] = { ...g, guess: Number(S.subGuess[key()]), stale: false };
   if (g.accepted) S.accepted[key()] = true;
   delete S.subGuess[key()];
@@ -221,24 +253,29 @@ function startSubmit() {
 }
 
 function watchTest(t) {
+  S.sel = null; S.labPhase[key()] = 'submission';
   play(key(), t.log, false, { scenario: t.scenario, kind: 'test', label: `Test ${t.n} · ${t.name}` });
 }
 
 function play(k, log, stale = false, meta = {}) {
   const r = { log, t: 0, done: false, stale, ...meta };
+  clearTimeout(toastTimer); S.toast = null; renderOverlay();
   S.runs[k] = r; S.hoverT = null;
   resetFx();
   const N = log.ticks.length;
   renderBoard(); renderRun(); renderSide(); updateWorkbench();
-  if (reducedMotion()) { r.t = N - 1; r.done = true; renderAll(); return; }
+  if (reducedMotion()) { r.t = N - 1; r.done = true; renderAll(); document.querySelector('#side .btn.primary')?.focus({ preventScroll: true }); return; }
   fx.playing = true;
   const start = performance.now();
   function step(now) {
-    if (S.runs[k] !== r) return;
-    r.t = playbackTick(now, start, SPEED, N);
-    if (key() === k) { renderBoard(); renderRunBody(); }
+    if (S.runs[k] !== r || r.done) return;
+    const nextTick = playbackTick(now, start, SPEED, N);
+    if (nextTick !== r.t) {
+      r.t = nextTick;
+      if (key() === k) { renderBoard(); renderRunBody(); }
+    }
     if (r.t < N - 1) requestAnimationFrame(step);
-    else { r.done = true; if (key() === k) renderAll(); else renderTabs(); }
+    else { r.done = true; if (key() === k) { renderAll(); document.querySelector('#side .btn.primary')?.focus({ preventScroll: true }); } else renderTabs(); }
   }
   requestAnimationFrame(step);
 }
@@ -281,14 +318,25 @@ document.addEventListener('click', (e) => {
   const lvBtn = e.target.closest('[data-level]');
   if (lvBtn) {
     cancelSceneTransition(); cancelDrag(); endDesignEdit();
+    document.querySelector('.chapter-menu').open = false;
     S.level = lvBtn.dataset.level; S.sel = null; S.hoverT = null; S.banner = null; resetFx(); renderAll();
-    document.querySelector(`.tab[data-level="${S.level}"]`).focus({ preventScroll: true }); return;
+    document.getElementById('day-label').focus({ preventScroll: true }); return;
   }
   const sb = e.target.closest('[data-scene]');
   if (sb) { switchScene(sb.dataset.scene, sb.dataset.scene === 'software'); return; }
   const add = e.target.closest('[data-add]');
   if (add) { addBlock(add.dataset.add); return; }
   const id = action?.id || e.target.id;
+  const phases = { 'predict-open': 'predict', 'submit-open': 'submit', 'review-open': 'review', 'brief-open': 'brief', 'return-build': 'build', 'close-task': 'build', 'done-edit': 'build' };
+  if (phases[id]) { setTask(phases[id]); return; }
+  if (id === 'equipment-open') { document.getElementById('equipment-menu').open = true; document.querySelector('[data-add]')?.focus(); return; }
+  if (id === 'fit-floor') { fitFloor(true); return; }
+  if (id === 'zoom-floor') { S.zoom = Math.min(1.5, S.zoom + .2); document.getElementById('stage-space').style.setProperty('--zoom', S.zoom); return; }
+  if (id === 'skip-run') { const r = run(); if (r) { r.t = r.log.ticks.length - 1; r.done = true; fx.playing = false; renderAll(); } return; }
+  if (action?.dataset.adjust) {
+    const field = document.getElementById(action.dataset.adjust);
+    field.stepUp(Number(action.dataset.delta)); field.dispatchEvent(new Event('input', { bubbles: true })); return;
+  }
   if (id === 'undo-design' || id === 'redo-design' || id === 'reset-design') { historyAction(id.split('-')[0]); return; }
   if (id === 'connect-btn') {
     if (isPlaying()) return;
@@ -324,7 +372,7 @@ document.addEventListener('click', (e) => {
     return;
   }
   if (id === 'to-software') { switchScene('software', true); return; }
-  if (id === 'banner-ok') { S.banner = null; renderOverlay(); const pv = document.getElementById('p-val'); if (pv) pv.focus(); return; }
+  if (id === 'banner-ok') { S.banner = null; setTask('predict'); return; }
   if (id === 'hint-btn') { S.hint[key()] = (S.hint[key()] || 0) + 1; renderSide(); updateWorkbench(); return; }
   if (id === 'del-block') {
     if (isPlaying()) return;
@@ -386,6 +434,8 @@ document.addEventListener('focusout', (e) => {
   endDesignEdit(); updateRunReadiness();
 });
 
+const point = (e, rect) => ({ x: (e.clientX - rect.left) * 900 / rect.width, y: (e.clientY - rect.top) * 400 / rect.height });
+
 let drag = null;
 function cancelDrag() {
   if (!drag && !S.wiring) return;
@@ -399,15 +449,19 @@ function cancelDrag() {
 document.addEventListener('pointercancel', cancelDrag);
 window.addEventListener('blur', cancelDrag);
 document.addEventListener('pointerdown', (e) => {
+  document.querySelectorAll('.chapter-menu[open], #equipment-menu[open], #connection-tools[open]').forEach((menu) => {
+    if (!menu.contains(e.target)) menu.open = false;
+  });
   const stage = document.getElementById('stage');
   if (!stage.contains(e.target) || isPlaying()) return;
+  if (e.target.closest('[data-add]')) return;
   endDesignEdit();
-  const d = design(), rect = stage.getBoundingClientRect();
+  const d = design(), rect = stage.getBoundingClientRect(), pos = point(e, rect);
   const port = e.target.closest('[data-port]');
   if (port) {
     const from = port.dataset.port;
     const src = from === 'traffic' ? d.traffic : d.blocks.find((b) => b.id === from);
-    S.wiring = { from, x1: src.x + NODE_W, y1: src.y + 41, x2: e.clientX - rect.left, y2: e.clientY - rect.top };
+    S.wiring = { from, x1: src.x + NODE_W, y1: src.y + 41, x2: pos.x, y2: pos.y };
     drag = { kind: 'wire', rect }; e.preventDefault(); return;
   }
   const node = e.target.closest('[data-node]');
@@ -415,15 +469,16 @@ document.addEventListener('pointerdown', (e) => {
   const id = node.dataset.node;
   const obj = id === 'traffic' ? null : d.blocks.find((b) => b.id === id);
   if (!obj) return;
-  drag = { kind: 'node', id, obj, ox: e.clientX - rect.left - obj.x, oy: e.clientY - rect.top - obj.y, rect, moved: false, startX: obj.x, startY: obj.y };
+  drag = { kind: 'node', id, obj, ox: pos.x - obj.x, oy: pos.y - obj.y, rect, moved: false, startX: obj.x, startY: obj.y };
   e.preventDefault();
 });
 
 document.addEventListener('pointermove', (e) => {
   if (drag) {
-    if (drag.kind === 'wire') { S.wiring.x2 = e.clientX - drag.rect.left; S.wiring.y2 = e.clientY - drag.rect.top; renderBoard(); return; }
-    const nx = Math.max(0, Math.min(900 - NODE_W, e.clientX - drag.rect.left - drag.ox));
-    const ny = Math.max(0, Math.min(400 - NODE_H - 40, e.clientY - drag.rect.top - drag.oy));
+    const pos = point(e, drag.rect);
+    if (drag.kind === 'wire') { S.wiring.x2 = pos.x; S.wiring.y2 = pos.y; renderBoard(); return; }
+    const nx = Math.max(0, Math.min(900 - NODE_W, pos.x - drag.ox));
+    const ny = Math.max(0, Math.min(400 - NODE_H - 40, pos.y - drag.oy));
     if (Math.abs(nx - drag.obj.x) + Math.abs(ny - drag.obj.y) > 3) drag.moved = true;
     if (drag.moved) { drag.obj.x = Math.round(nx / 10) * 10; drag.obj.y = Math.round(ny / 10) * 10; renderBoard(); }
     return;
@@ -463,7 +518,7 @@ document.addEventListener('pointerup', (e) => {
 });
 
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') { cancelDrag(); return; }
+  if (e.key === 'Escape') { cancelDrag(); if (S.sel || S.labPhase[key()] !== 'build') setTask('build'); return; }
   const editing = e.target.closest('input, select, textarea, [contenteditable="true"]');
   if (!editing && (e.ctrlKey || e.metaKey) && !e.altKey) {
     const key = e.key.toLowerCase();
@@ -490,7 +545,7 @@ document.addEventListener('keydown', (e) => {
   if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('.node[data-node]') && e.target.dataset.node !== 'traffic') {
     if (e.target !== e.target.closest('.node')) return;
     S.sel = { kind: 'block', id: e.target.dataset.node }; renderBoard(); renderSide(); updateWorkbench();
-    document.getElementById('f-name')?.focus(); e.preventDefault();
+    document.querySelector('#side .field-row [data-field]')?.focus(); e.preventDefault();
   }
 });
 
@@ -498,8 +553,15 @@ document.addEventListener('keyup', (e) => {
   if (e.key.startsWith('Arrow')) endDesignEdit();
 });
 
+document.addEventListener('toggle', (e) => {
+  if (e.target.id === 'analysis-drawer' && e.target.open) renderRunBody();
+  if (e.target.matches('.chapter-menu, #equipment-menu, #connection-tools') && e.target.open) {
+    document.querySelectorAll('.chapter-menu, #equipment-menu, #connection-tools').forEach((menu) => { if (menu !== e.target) menu.open = false; });
+  }
+}, true);
+
 let rz = null;
-window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { sizeCanvas(); renderRunBody(); }, 120); });
+window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { sizeCanvas(); fitFloor(); renderRunBody(); }, 120); });
 
 startFx(document.getElementById('fx'));
 renderAll();

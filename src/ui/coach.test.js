@@ -27,7 +27,7 @@ function renderLesson(options, check) {
     const log = simulate({ ...d, blocks: d.blocks.map((b) => ({ ...b, name: b.names[world] })) }, lv.scenes[world].scenario);
     const key = level + ':' + world;
     Object.assign(S, {
-      level, scene: { [level]: world }, designs: { [level]: { [world]: d } },
+      level, labPhase: { [key]: 'review' }, scene: { [level]: world }, designs: { [level]: { [world]: d } },
       pred: {}, hint: {}, problems: {}, sel: null, submits: {}, accepted: {}, subGuess: {},
       runs: { [key]: { log, t: log.ticks.length - 1, done: true, stale: false } },
       attempts: { [key]: [{ guessBlock: 's1', actualBlock: 's1', blockRight: true, guess: 20, actual: 50, err: 0.6, passed: log.result.passed, ...attempt }] }
@@ -48,9 +48,10 @@ test('coffee shop and software results use their own units and log language', ()
       const html = render();
       assert.ok(html.includes(world === 'cafe' ? '50 min' : '50 s'));
       assert.ok(html.includes(world === 'cafe' ? 'The rush starts' : 'Traffic jumps'));
-      assert.ok(html.includes('60%'));
-      assert.ok(html.includes('Chapter stars'));
-      assert.ok(html.includes('Submit a coffee shop that passes every test.'));
+      assert.ok(html.includes('You predicted 20'));
+      assert.ok(!html.includes('Chapter stars'));
+      assert.ok(!html.includes('aria-label="Prediction"'));
+      assert.ok(!html.includes('aria-label="Submit"'));
     });
   }
 });
@@ -62,10 +63,10 @@ test('a recovery not observed before closing is explained without a numeric scor
   }, (render, log) => {
     assert.equal(log.metrics.recoveryNeverEnded, true);
     const html = render();
-    assert.ok(html.includes('Not cleared during this run'));
-    assert.ok(html.includes('There is no exact recovery time to score.'));
+    assert.ok(html.includes('Still waiting at closing time.'));
+    assert.ok(!html.includes('100%'));
     assert.ok(!html.includes('gap-big'));
-    assert.ok(html.includes('0 of 3 stars'));
+    assert.ok(!html.includes('Chapter stars'));
   });
 });
 
@@ -73,6 +74,7 @@ test('a recovery not observed before closing is explained without a numeric scor
 function submit(level, world, d) {
   const sd = { ...d, blocks: d.blocks.map((b) => ({ ...b, name: b.names[world] })) };
   const g = grade(sd, level, world);
+  S.labPhase[level + ':' + world] = 'submission';
   S.submits[level + ':' + world] = { ...g, guess: g.total, stale: false };
   if (g.accepted) S.accepted[level + ':' + world] = true;
   return g;
@@ -82,7 +84,7 @@ test('a sample pass is not a solve: Run asks for Submit, and hidden tests decide
   renderLesson({ edit: (d) => { d.blocks[0].capacity = 200; } }, (render, log) => {
     assert.equal(log.result.passed, true);
     let html = render();
-    assert.ok(html.includes('Submit to face the hidden mornings'));
+    assert.ok(html.includes('Try a full week'));
     assert.ok(!html.includes('See it as software'));
     const d = S.designs.l1.cafe;
     const g = submit('l1', 'cafe', d);
@@ -145,7 +147,9 @@ test('editing a completed run hides its grade and hints', () => {
     const html = render();
     assert.ok(!html.includes('aria-label="Result"'));
     assert.ok(!html.includes('aria-label="Tutor"'));
-    assert.ok(html.includes('aria-label="Prediction"'));
+    assert.ok(html.includes('aria-label="Build experiment"'));
+    S.labPhase['l1:cafe'] = 'predict';
+    assert.ok(render().includes('aria-label="Prediction"'));
   });
 });
 
@@ -172,4 +176,21 @@ test('an unscored first software attempt cannot earn an accuracy star', () => {
   } finally {
     S.attempts = previous; S.accepted = previousAccepted;
   }
+});
+
+
+test('the initial task shows only one action, with brief and prediction revealed on request', () => {
+  renderLesson({}, (render) => {
+    S.labPhase['l1:cafe'] = 'build';
+    let html = render();
+    assert.ok(html.includes('aria-label="Build experiment"'));
+    for (const hidden of ['Prediction', 'Submit', 'Equipment settings', 'Brief', 'Chapter stars']) assert.ok(!html.includes(`aria-label="${hidden}"`));
+    S.labPhase['l1:cafe'] = 'brief'; html = render();
+    assert.ok(html.includes('aria-label="Brief"'));
+    assert.ok(html.includes('Limits &amp; targets'));
+    assert.ok(!html.includes('aria-label="Prediction"'));
+    S.labPhase['l1:cafe'] = 'predict'; html = render();
+    assert.ok(html.includes('aria-label="Prediction"'));
+    assert.ok(!html.includes('aria-label="Brief"'));
+  });
 });

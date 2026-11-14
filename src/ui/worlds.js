@@ -112,3 +112,21 @@ export const cafeWords = (s) => s
   .replace(/servers/g, 'baristas').replace(/a database/g, 'an espresso machine').replace(/database/g, 'espresso machine')
   .replace(/requests/g, 'customers').replace(/a queue/g, 'a ticket rail').replace(/queue/g, 'ticket rail').replace(/workers/g, 'baristas')
   .replace(/writes/g, 'orders');
+
+// Small, code-native props: each is the interactive object, not a picture of a dashboard card.
+export function artifact(w, type, copies = 1) {
+  const cafe = {
+    traffic: '<ellipse class="art-shadow" cx="65" cy="73" rx="39" ry="5"/><path class="art-wood" d="M33 73V12a32 32 0 0 1 64 0v61z"/><path class="art-glass" d="M41 68V15a24 24 0 0 1 48 0v53z"/><path class="art-line" d="M65 0v68M43 24h44"/><rect class="art-light" x="48" y="32" width="34" height="18" rx="3"/><text x="65" y="44" text-anchor="middle" fill="var(--accent)" font-size="9" font-family="var(--font)">OPEN</text><circle class="art-accent" cx="80" cy="57" r="2"/>',
+    server: '<ellipse class="art-shadow" cx="65" cy="74" rx="51" ry="5"/><path class="art-accent" d="M42 55V37c0-17 46-17 46 0v18z"/><circle class="art-skin" cx="65" cy="16" r="14"/><path class="art-hair" d="M51 15C44-8 84-8 79 15L68 5 55 13z"/><path class="art-light" d="M55 31h20v27H55z"/><path class="art-skin" d="M44 38h-7v16h21v-6H44zm42 0h7v16H72v-6h14z"/><rect class="art-wood" x="14" y="54" width="102" height="18" rx="3"/><path class="art-line" d="M23 72v7m84-7v7"/><path class="art-light" d="M80 43h13v10H80zM93 45h5v5h-5"/><path class="art-line" d="M83 34v4m6-6v6"/>',
+    loadBalancer: '<ellipse class="art-shadow" cx="65" cy="73" rx="47" ry="5"/><path class="art-wood" d="M33 65l10-51h44l10 51z"/><path class="art-body" d="M41 20h48v33H41z"/><path class="art-line" d="M50 36h30m-7-7 8 7-8 7M37 65l-4 10m60-10 4 10"/><circle class="art-accent" cx="23" cy="59" r="5"/><circle class="art-accent" cx="65" cy="65" r="5"/><circle class="art-accent" cx="108" cy="59" r="5"/>',
+    cache: '<ellipse class="art-shadow" cx="65" cy="74" rx="39" ry="5"/><rect class="art-body" x="34" y="1" width="62" height="70" rx="7"/><rect class="art-glass" x="42" y="10" width="46" height="49" rx="3"/><path class="art-line" d="M44 34h42M91 28v14M44 62h42"/><path class="art-wood" d="M49 18h9v14h-9zm18-2h9v16h-9zM49 42h9v14h-9zm18-2h9v16h-9z"/><path class="art-line" d="M40 72v5m50-5v5"/>',
+    database: '<ellipse class="art-shadow" cx="65" cy="74" rx="51" ry="5"/><rect class="art-wood" x="14" y="62" width="102" height="12" rx="3"/><rect class="art-body" x="28" y="16" width="75" height="43" rx="6"/><path class="art-accent" d="M30 31h71v10H30z"/><circle class="art-light" cx="46" cy="26" r="3"/><circle class="art-light" cx="57" cy="26" r="3"/><path class="art-line" d="M51 42v5h16v-5m-8 5v7M81 43v11"/><path class="art-light" d="M49 54h16v8H49zM81 54h11v8H81z"/><path class="art-line" d="M35 10h15m6 0h15m6 0h15M20 74v5m90-5v5"/>',
+    queue: '<ellipse class="art-shadow" cx="65" cy="74" rx="47" ry="5"/><path class="art-wood" d="M18 12h94v11H18z"/><path class="art-line" d="M26 23v44m78-44v44"/><path class="art-light" d="M28 24h18v33l-4-3-5 3-5-3-4 3zm28 0h18v43l-4-3-5 3-5-3-4 3zm28 0h18v28l-4-3-5 3-5-3-4 3z"/><path class="art-line" d="M32 34h10m18 0h10m18 0h10M60 42h10m-10 8h7"/>'
+  };
+  const crew = w === 'cafe' && type === 'server' ? Array.from({ length: Math.min(3, Math.max(0, copies - 1)) }, (_, i) => {
+    const x = [34, 96, 15][i];
+    return `<circle class="art-skin" cx="${x}" cy="23" r="10"/><path class="art-accent" d="M${x - 10} 48V36a10 10 0 0 1 20 0v12z"/>`;
+  }).join('') : '';
+  const software = '<ellipse class="art-shadow" cx="65" cy="73" rx="46" ry="5"/><rect class="art-glass" x="24" y="8" width="82" height="60" rx="10"/>';
+  return `<svg class="artifact" viewBox="0 0 130 82" aria-hidden="true">${w === 'cafe' ? crew + cafe[type] : software + `<g transform="translate(46 19) scale(1.6)" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${ICON_PATHS.software[type]}</g>`}</svg>`;
+}
