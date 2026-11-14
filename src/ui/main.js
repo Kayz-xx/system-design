@@ -173,7 +173,9 @@ function startRun() {
   if (problems.length) { renderSide(); updateWorkbench(); return; }
   const p = S.pred[key()];
   const log = simulate(sd, sn.scenario);
-  const actual = log.metrics[sn.predict.key] / predScale();
+  const metric = log.metrics[sn.predict.key];
+  const actual = sn.predict.key === 'recoverySeconds' && log.metrics.recoveryNeverEnded
+    ? Infinity : metric == null ? null : metric / predScale();
   const guess = parseFloat(p.value);
   const actualBlock = log.result.firstFailure ? log.result.firstFailure.block : 'none';
   attempts().push({ guessBlock: p.block, actualBlock, blockRight: p.block === actualBlock, guess, actual, err: predError(guess, actual), passed: log.result.passed });

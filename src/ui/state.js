@@ -89,5 +89,5 @@ export function resetDesign() {
 export function stars(levelId) {
   const a = (k) => S.attempts[levelId + ':' + k] || [];
   const first = a('software')[0];
-  return [a('cafe').some((x) => x.passed), a('software').some((x) => x.passed), !!first && first.err <= 0.15];
+  return [a('cafe').some((x) => x.passed), a('software').some((x) => x.passed), !!first && Number.isFinite(first.err) && first.err <= 0.15];
 }

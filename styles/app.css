@@ -150,9 +150,9 @@ a { color: var(--accent); }
 .badge { font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 5px; }
 .badge.pass { background: var(--ok-soft); color: var(--ok); }
 .badge.fail { background: var(--crit-soft); color: var(--crit); }
-.compare { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; font-size: 13px; }
+.compare { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 4px 10px; font-size: 13px; }
 .compare .k { color: var(--ink-2); }
-.compare .v { font-family: var(--mono); font-variant-numeric: tabular-nums; text-align: right; }
+.compare .v { font-family: var(--mono); font-variant-numeric: tabular-nums; text-align: right; overflow-wrap: anywhere; }
 .gap-big { font-size: 24px; font-weight: 700; font-family: var(--mono); letter-spacing: -0.02em; }
 .right { color: var(--ok); }
 .wrong { color: var(--crit); }

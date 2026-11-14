@@ -6,12 +6,37 @@ import { S, L, W, world, key, scene, design, run, attempts, nameOf, stars, esc, 
 import { FIELDS } from './worlds.js';
 
 export const predScale = () => scene().predict.scale || 1;
-export const predError = (g, a) => (a === 0 ? (g === 0 ? 0 : 1) : Math.min(1, Math.abs(g - a) / Math.abs(a)));
+export const predError = (g, a) => {
+  if (!Number.isFinite(g) || !Number.isFinite(a)) return null;
+  return a === 0 ? (g === 0 ? 0 : 1) : Math.min(1, Math.abs(g - a) / Math.abs(a));
+};
 
 function fmtPred(v) {
-  if (v === null || v === undefined || !isFinite(v)) return '–';
+  if (v === Infinity) return 'Not cleared during this run';
+  if (!Number.isFinite(v)) return 'Not observed';
   const u = scene().predict.unit;
   return u === '%' ? (Math.round(v * 10) / 10) + '%' : fmt1(v) + ' ' + u;
+}
+
+function starSummary(lv) {
+  const st = stars(lv.id), first = (S.attempts[lv.id + ':software'] || [])[0];
+  const descriptions = [
+    st[0] ? 'Your coffee shop met every target.' : 'Meet every target in the coffee shop.',
+    st[1] ? 'Your software system met every target.' : 'Meet every target in software.',
+    st[2] ? 'Your first software guess was within 15%.' : !first
+      ? 'Get your first software guess within 15%.' : Number.isFinite(first.err)
+        ? `Your first software guess was ${Math.round(first.err * 100)}% off. This star is decided on the first try.`
+        : 'No exact recovery time was observed on your first software run. This star was not awarded.'
+  ];
+  return `<section class="panel" aria-label="Chapter stars">
+    <div class="label">Your stamp card · Chapter ${lv.n}</div>
+    <h2>${st.filter(Boolean).length} of 3 stars</h2>
+    <ol class="log">${descriptions.map((text, i) => `<li><span class="${st[i] ? 'right' : 'muted'}" aria-label="${st[i] ? 'Earned' : 'Not earned'}">${st[i] ? '★' : '☆'}</span><span>${esc(text)}</span></li>`).join('')}</ol>
+  </section>`;
+}
+
+function nextChapter() {
+  return LEVELS.find((lv) => { const st = stars(lv.id); return !st[0] || !st[1]; });
 }
 
 // Plain-language lines for each event in the run log, in the current world's words.
@@ -124,9 +149,13 @@ export function renderSide() {
     const nb = (id) => (id === 'none' ? (w === 'cafe' ? 'nowhere' : 'nothing') : nameOf(d, id));
     let next = '';
     if (log.result.passed && w === 'cafe') next = `<button class="btn primary" id="to-software">See it as software →</button>`;
-    else if (log.result.passed && lv.n < LEVELS.length) next = `<button class="btn primary" data-level="l${lv.n + 1}">Next: Level ${lv.n + 1}</button>`;
-    else if (log.result.passed) next = `<span class="muted">All three levels done. The chaos agent is next on the roadmap.</span>`;
-    const carry = w === 'software' && atts.length === 1 ? (last.err <= 0.15 ? ' · ★ the coffee shop carried over' : ' · the coffee shop had the same answer') : '';
+    else if (log.result.passed) {
+      const unfinished = nextChapter();
+      next = !unfinished ? '<span class="right">All three chapters complete. You have learned saturation, redundancy, and caching.</span>'
+        : unfinished.id === lv.id ? '<button class="btn primary" data-scene="cafe">Finish the coffee shop →</button>'
+          : `<button class="btn primary" data-level="${unfinished.id}">Continue: ${esc(unfinished.name)} →</button>`;
+    }
+    const carry = w === 'software' && st[0] && atts.length === 1 && Number.isFinite(last.err) && last.err <= 0.15 ? ' · ★ your café intuition carried over' : '';
     html += `<section class="panel" aria-label="Result">
         <div class="verdict"><span class="badge ${log.result.passed ? 'pass' : 'fail'}">${log.result.passed ? (w === 'cafe' ? 'The shop held up' : 'Passed') : (w === 'cafe' ? 'The shop broke' : 'Failed')}</span><span class="muted">try ${atts.length}</span></div>
         <div class="compare">
@@ -135,16 +164,18 @@ export function renderSide() {
           <span class="k">Your guess</span><span class="v">${fmtPred(last.guess)}</span>
           <span class="k">What happened</span><span class="v">${fmtPred(last.actual)}</span>
         </div>
-        <div><span class="gap-big ${last.err <= 0.15 ? 'right' : 'wrong'}">${Math.round(last.err * 100)}%</span> <span class="muted">off${carry}</span></div>
+        ${Number.isFinite(last.err)
+          ? `<div><span class="gap-big ${last.err <= 0.15 ? 'right' : 'wrong'}">${Math.round(last.err * 100)}%</span> <span class="muted">off${carry}</span></div>`
+          : '<p class="hint">The line did not clear before this run ended. There is no exact recovery time to score. Try adding headroom, then predict again.</p>'}
         ${next ? `<div class="btn-row">${next}</div>` : ''}
       </section>`;
+    html += starSummary(lv);
     const step = S.hint[key()] || 0, labels = ['Question', 'Idea', 'Where to look'];
     html += `<section class="panel" aria-label="Tutor">
         <div class="label">What happened · from the run log</div>
         <ol class="log">${narrate(log, d, sc).map((l) => `<li><time>${Wd.clock(l.t)}</time><span>${l.s}</span></li>`).join('')}</ol>
         ${!log.result.passed ? `${sn.hints.slice(0, step).map((h, i) => `<div class="hint"><b>${labels[i]}</b>${esc(h)}</div>`).join('')}
-          <div class="btn-row">${step < 3 ? `<button class="btn small" id="hint-btn">${step ? 'Next hint' : 'Give me a hint'} (${step + 1} of 3)</button>` : '<span class="muted">No more hints. The tutor never hands over the answer.</span>'}</div>` : ''}
-        <p class="muted" style="font-size:12px">Template hints for now. The OpenAI tutor will send the same log and keep these as the fallback.</p>
+          <div class="btn-row">${step < 3 ? `<button class="btn small" id="hint-btn">${step ? 'Next hint' : 'Give me a hint'} (${step + 1} of 3)</button>` : '<span class="muted">Try an edit, then make another prediction.</span>'}</div>` : ''}
       </section>`;
   }
   document.getElementById('side').innerHTML = html;
