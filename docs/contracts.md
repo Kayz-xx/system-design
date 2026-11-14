@@ -79,7 +79,7 @@ See `src/levels/levels.js`. Each level has `id`, `n`, `name`, `concept`, `diffic
 
 ## AI endpoints (to build)
 
-Both are serverless functions under `api/` that hold `OPENAI_API_KEY`. The client must work when they fail or time out.
+Both are serverless functions under `api/` that hold `GEMINI_API_KEY`. The client must work when they fail or time out.
 
 ### `POST /api/tutor`
 
@@ -89,7 +89,7 @@ Request:
 { "world": "cafe", "level": "l1", "design": {}, "scenario": {}, "events": [], "result": {}, "prediction": { "block": "s1", "value": 20, "actual": 50 }, "hintStep": 1 }
 ```
 
-Response: `{ "text": "…", "step": 1 }`. The server ignores the client's `events` and reruns `simulate()` on the cleaned design, so the text may mention only events in that log; the reply is checked before it is returned. Errors: 400 bad request, 503 no key, 502 OpenAI failed or the reply failed the check, 504 timeout. The client gives up after 4 s. Hint steps: 1 asks a question, 2 names the concept, 3 points at a block. It never gives the finished design. On any failure the client shows the level's template hint instead.
+Response: `{ "text": "…", "step": 1 }`. The server ignores the client's `events` and reruns `simulate()` on the cleaned design, so the text may mention only events in that log; the reply is checked before it is returned. Errors: 400 bad request, 503 no key, 502 Gemini failed or the reply failed the check, 504 timeout. The client gives up after 4 s. Hint steps: 1 asks a question, 2 names the concept, 3 points at a block. It never gives the finished design. On any failure the client shows the level's template hint instead.
 
 ### `POST /api/chaos/plan`
 

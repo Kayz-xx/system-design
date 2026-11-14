@@ -14,7 +14,7 @@ These decisions replace the parts of revision 2 below that contradict them.
 | Visual: customers and packets drawn as dots | One dot is one customer, or 50 requests. The line grows as dots past the counter; walk-outs drift away in red. |
 | Gamified lightly | Three stars per level: coffee shop passed, software passed, and the first software prediction within 15% (the coffee shop carried over) |
 | Cut from the demo | The critique round and the progress chart. The chaos agent replaces the critique as the AI feature. |
-| LLM provider | OpenAI, behind one serverless function |
+| LLM provider | Gemini (`gemini-2.5-flash` by default), behind one serverless function |
 | Inspiration | Chinilla for interaction (flowing packets, per-block health, a bottleneck callout); not its look or branding |
 
 | Level | Coffee shop | Software | Answer both times |

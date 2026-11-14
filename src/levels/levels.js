@@ -6,6 +6,8 @@
 // `design` is the reference broken design the tests use. The board starts from `starter`,
 // which holds only what the learner is given. `tests` are hidden mornings that Submit runs
 // after the sample scenario; each changes the sample's shocks and gives the same verdict in both scenes.
+// `audit` is the Constraints box as ranges, in software units: the audit draws random mornings from it
+// (see audit.js). `p` is the chance a morning has that shock at all.
 
 const PRIMER = 'https://github.com/donnemartin/system-design-primer';
 const SCALE = 50;
@@ -13,6 +15,7 @@ const SCALE = 50;
 const LEVELS = [
   {
     id: 'l1', n: 1, name: 'Morning rush', concept: 'Saturation', difficulty: 'Easy',
+    audit: { base: [40, 60], spike: { p: 0.9, t: [0, 90], dur: [10, 40], load: [100, 240] } },
     reading: { label: 'Latency vs throughput', url: PRIMER + '#latency-vs-throughput' },
     translate: [
       ['Barista', 'Server'], ['The line', 'Queue'], ['Customers a minute', 'Requests a second'], ['50 minutes', '50 seconds']
@@ -64,6 +67,7 @@ const LEVELS = [
   },
   {
     id: 'l2', n: 2, name: 'Sick day', concept: 'Redundancy', difficulty: 'Easy',
+    audit: { base: [180, 280], serverFail: { p: 1, t: [10, 100], dur: [10, 90] } },
     reading: { label: 'Load balancer', url: PRIMER + '#load-balancer', extra: { label: 'Availability patterns', url: PRIMER + '#availability-patterns' } },
     translate: [
       ['Shared line', 'Load balancer'], ['Baristas', 'Server copies'], ['Barista goes home sick', 'A copy crashes'], ['Walk-outs', 'Dropped requests']
@@ -119,6 +123,7 @@ const LEVELS = [
   },
   {
     id: 'l3', n: 3, name: 'Fridge sells out', concept: 'Caching', difficulty: 'Medium',
+    audit: { base: [900, 1100], cacheFlush: { p: 0.75, t: [10, 110], warm: 30 } },
     reading: { label: 'Cache', url: PRIMER + '#cache' },
     translate: [
       ['Grab-and-go fridge', 'Cache'], ['Espresso machine', 'Database'], ['Extra espresso machine', 'Read replica'], ['Fridge sells out', 'Cache flush']
@@ -179,6 +184,7 @@ const LEVELS = [
   },
   {
     id: 'l4', n: 4, name: 'Mobile orders', concept: 'Asynchronism', difficulty: 'Medium',
+    audit: { base: [40, 60], spike: { p: 0.9, t: [0, 90], dur: [10, 30], load: [100, 300] }, noun: { cafe: 'app orders', software: 'writes' } },
     reading: { label: 'Asynchronism', url: PRIMER + '#asynchronism' },
     translate: [
       ['Ticket rail', 'Message queue'], ['Baristas pulling tickets', 'Workers'], ['An app order', 'A write'], ['Order refused', 'Dropped write']

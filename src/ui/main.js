@@ -8,6 +8,7 @@ import { renderBoard as drawBoard, renderOverlay, NODE_W, NODE_H } from './board
 import { fx, SPEED, startFx, sizeCanvas, resetFx, invalidateColors } from './fx.js';
 import { renderRun, renderRunBody, tickFromPointer } from './run-panel.js';
 import { renderSide, predScale, predError } from './coach.js';
+import { runAudit, auditMorning } from './audit-panel.js';
 
 /* ---------- Header and palette ---------- */
 function renderTabs() {
@@ -145,7 +146,7 @@ function updateRunReadiness() {
 function updateWorkbench() {
   renderConnections(); renderEditTools();
   const playing = isPlaying();
-  document.querySelectorAll('[data-add], #connection-body button, #connection-body select, [data-field], #del-block, #del-wire, #p-tests, [data-watch]').forEach((el) => {
+  document.querySelectorAll('[data-add], #connection-body button, #connection-body select, [data-field], #del-block, #del-wire, #p-tests, [data-watch], #audit-btn, #audit-watch, #audit-open').forEach((el) => {
     el.disabled = playing || (el.id === 'connect-btn' && !design().blocks.length);
   });
   updateRunReadiness();
@@ -327,7 +328,7 @@ document.addEventListener('click', (e) => {
   const add = e.target.closest('[data-add]');
   if (add) { addBlock(add.dataset.add); return; }
   const id = action?.id || e.target.id;
-  const phases = { 'predict-open': 'predict', 'submit-open': 'submit', 'review-open': 'review', 'brief-open': 'brief', 'return-build': 'build', 'close-task': 'build', 'done-edit': 'build' };
+  const phases = { 'predict-open': 'predict', 'submit-open': 'submit', 'review-open': 'review', 'brief-open': 'brief', 'return-build': 'build', 'submission-open': 'submission', 'close-task': 'build', 'done-edit': 'build' };
   if (phases[id]) { setTask(phases[id]); return; }
   if (id === 'equipment-open') { document.getElementById('equipment-menu').open = true; document.querySelector('[data-add]')?.focus(); return; }
   if (id === 'fit-floor') { fitFloor(true); return; }
@@ -369,6 +370,16 @@ document.addEventListener('click', (e) => {
   if (watch) {
     const t = submission()?.results.find((x) => x.id === watch.dataset.watch);
     if (t && !isPlaying()) watchTest(t);
+    return;
+  }
+  if (id === 'audit-open') { if (!isPlaying()) { runAudit(); setTask('audit'); } return; }
+  if (id === 'audit-btn') { if (!isPlaying()) { runAudit(); renderSide(); updateWorkbench(); document.querySelector('.audit')?.scrollIntoView({ block: 'nearest', behavior: reducedMotion() ? 'auto' : 'smooth' }); } return; }
+  if (id === 'audit-watch') {
+    const m = auditMorning();
+    if (m && !isPlaying()) {
+      const label = world() === 'cafe' ? `Random morning #${m.i + 1}` : `Random scenario #${m.i + 1}`;
+      play(key(), simulate(simDesign(design()), m.scenario), false, { scenario: m.scenario, kind: 'test', label });
+    }
     return;
   }
   if (id === 'to-software') { switchScene('software', true); return; }

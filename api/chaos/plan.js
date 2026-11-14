@@ -4,9 +4,9 @@
 // The model never invents an attack's numbers, and the client re-simulates the attack before showing it.
 import { cleanDesign, cleanScenario, findScene } from '../../src/ai/facts.js';
 import { DEFAULT_BUDGET, cleanAttack, describeAttack, searchAttacks, storyReason, templateStory } from '../../src/ai/attacks.js';
-import { callOpenAI, jsonHandler } from '../_openai.js';
+import { callLLM, hasKey, jsonHandler } from '../_llm.js';
 
-const OPENAI_TIMEOUT_MS = 6000;
+const LLM_TIMEOUT_MS = 6000;
 const SCHEMA = {
   name: 'chaos_pick',
   schema: {
@@ -62,7 +62,7 @@ function chaosPrompt(p) {
 }
 
 // Framework-free core, used by the handler, the dev server and the tests.
-export async function chaosResponse(body, { env = process.env, fetchImpl = fetch, timeoutMs = OPENAI_TIMEOUT_MS } = {}) {
+export async function chaosResponse(body, { env = process.env, fetchImpl = fetch, timeoutMs = LLM_TIMEOUT_MS } = {}) {
   let p;
   try {
     p = prepareChaos(body);
@@ -76,12 +76,12 @@ export async function chaosResponse(body, { env = process.env, fetchImpl = fetch
     status: 200,
     json: { attack: c.attack, story, facts: describeAttack(c.attack, p.scenario, p.design, p.world), source }
   });
-  if (!env.OPENAI_API_KEY) return reply(p.candidates[0], templateStory(p.candidates[0].attack, p.world), 'search');
+  if (!hasKey(env)) return reply(p.candidates[0], templateStory(p.candidates[0].attack, p.world), 'search');
 
   let pick;
   try {
     const { instructions, input } = chaosPrompt(p);
-    pick = await callOpenAI({ instructions, input, schema: SCHEMA, maxTokens: 300, env, fetchImpl, timeoutMs });
+    pick = await callLLM({ instructions, input, schema: SCHEMA, maxTokens: 300, env, fetchImpl, timeoutMs });
   } catch {
     return reply(p.candidates[0], templateStory(p.candidates[0].attack, p.world), 'search');
   }

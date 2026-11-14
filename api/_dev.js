@@ -1,5 +1,5 @@
 // Local dev server with the API routes: node api/_dev.js, then open http://localhost:5173
-// Serves the static app like `npm run dev`, plus POST /api/tutor. Reads OPENAI_API_KEY from .env if present.
+// Serves the static app like `npm run dev`, plus POST /api/tutor. Reads GEMINI_API_KEY from .env if present.
 // The leading underscore keeps Vercel from deploying this file as a route.
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
@@ -8,10 +8,11 @@ import { extname, join, normalize, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import tutor from './tutor.js';
 import chaosPlan from './chaos/plan.js';
+import auditNote from './audit/note.js';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const PORT = Number(process.env.PORT) || 5173;
-const ROUTES = { '/api/tutor': tutor, '/api/chaos/plan': chaosPlan };
+const ROUTES = { '/api/tutor': tutor, '/api/chaos/plan': chaosPlan, '/api/audit/note': auditNote };
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png' };
 
 const envFile = join(ROOT, '.env');
@@ -36,5 +37,5 @@ createServer(async (req, res) => {
     res.end('Not found');
   }
 }).listen(PORT, () => {
-  console.log(`http://localhost:${PORT}  (tutor ${process.env.OPENAI_API_KEY ? 'on' : 'off: no OPENAI_API_KEY, the app shows template hints'})`);
+  console.log(`http://localhost:${PORT}  (tutor ${process.env.GEMINI_API_KEY ? 'on' : 'off: no GEMINI_API_KEY, the app shows template hints'})`);
 });

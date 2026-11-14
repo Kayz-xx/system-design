@@ -1,4 +1,4 @@
-// Run with: npm test. No network: OpenAI and /api/chaos/plan are replaced by fake fetch functions.
+// Run with: npm test. No network: Gemini and /api/chaos/plan are replaced by fake fetch functions.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { LEVELS } from '../levels/levels.js';
@@ -20,8 +20,8 @@ const fortress = () => {
   d.wires = [['traffic', 'lb1'], ['lb1', 's1']];
   return d;
 };
-const env = { OPENAI_API_KEY: 'test-key' };
-const openaiJson = (obj) => async () => ({ ok: true, json: async () => ({ output: [{ type: 'message', content: [{ type: 'output_text', text: JSON.stringify(obj) }] }] }) });
+const env = { GEMINI_API_KEY: 'test-key' };
+const geminiJson = (obj) => async () => ({ ok: true, json: async () => ({ candidates: [{ content: { role: 'model', parts: [{ text: JSON.stringify(obj) }] } }] }) });
 const api = (core) => async (url, init) => { const out = await core(JSON.parse(init.body)); return { ok: out.status === 200, json: async () => out.json }; };
 
 for (const id of ['l1', 'l2', 'l3']) {
@@ -70,26 +70,26 @@ test('facts and stories use the world’s words', () => {
 
 test('endpoint: the model picks a proven attack and tells it; it cannot invent one', async () => {
   const body = { world: 'cafe', level: 'l2', design: passing('l2'), scenario: level('l2').scenes.cafe.scenario };
-  const good = await chaosResponse(body, { env, fetchImpl: openaiJson({ choice: 1, story: 'A tour bus pulls up outside. Then a barista burns their hand and goes home.' }) });
+  const good = await chaosResponse(body, { env, fetchImpl: geminiJson({ choice: 1, story: 'A tour bus pulls up outside. Then a barista burns their hand and goes home.' }) });
   assert.equal(good.status, 200);
   assert.equal(good.json.source, 'ai');
   assert.match(good.json.story, /tour bus/);
   const d = cleanDesign(body.design, 'cafe');
   assert.equal(tryAttack(d, body.scenario, good.json.attack).broke, true);
-  const out = await chaosResponse(body, { env, fetchImpl: openaiJson({ choice: 99, story: 'whatever happens here today' }) });
+  const out = await chaosResponse(body, { env, fetchImpl: geminiJson({ choice: 99, story: 'whatever happens here today' }) });
   assert.equal(out.json.source, 'search');
-  const digits = await chaosResponse(body, { env, fetchImpl: openaiJson({ choice: 0, story: 'At 8:20 a bus brings 40 people to the door.' }) });
+  const digits = await chaosResponse(body, { env, fetchImpl: geminiJson({ choice: 0, story: 'At 8:20 a bus brings 40 people to the door.' }) });
   assert.equal(digits.json.source, 'ai-pick');
   assert.doesNotMatch(digits.json.story, /\d/);
-  const nokey = await chaosResponse(body, { env: {}, fetchImpl: openaiJson({}) });
+  const nokey = await chaosResponse(body, { env: {}, fetchImpl: geminiJson({}) });
   assert.equal(nokey.json.source, 'search');
   assert.equal((await chaosResponse({ ...body, design: { blocks: [], wires: [['traffic', 'x']] } }, { env })).status, 400);
-  const safe = await chaosResponse({ ...body, level: 'l1', design: fortress() }, { env, fetchImpl: openaiJson({}) });
+  const safe = await chaosResponse({ ...body, level: 'l1', design: fortress() }, { env, fetchImpl: geminiJson({}) });
   assert.deepEqual(safe.json, { attack: null, story: null, survived: true });
 });
 
 test('loop: breaks a passing Level 1 coffee shop through the endpoint', async () => {
-  const fetchImpl = api((b) => chaosResponse(b, { env, fetchImpl: openaiJson({ choice: 0, story: 'The only barista wakes up with a fever and calls in sick.' }) }));
+  const fetchImpl = api((b) => chaosResponse(b, { env, fetchImpl: geminiJson({ choice: 0, story: 'The only barista wakes up with a fever and calls in sick.' }) }));
   const out = await breakDesign({ world: 'cafe', level: 'l1', design: passing('l1'), scenario: level('l1').scenes.cafe.scenario }, { fetchImpl });
   assert.equal(out.broken, true);
   assert.equal(out.log.result.passed, false);
@@ -123,4 +123,17 @@ test('loop: works offline with the local search, and reports a design that survi
   const safe = await breakDesign({ world: 'cafe', level: 'l1', design: fortress(), scenario: level('l1').scenes.cafe.scenario }, { fetchImpl: offline });
   assert.equal(safe.survived, true);
   assert.equal(safe.broken, false);
+});
+
+test('endpoint: Gemini gets a JSON schema in its own format, and the key only in a header', async () => {
+  const seen = [];
+  const fetchImpl = async (url, init) => { seen.push({ url, init, payload: JSON.parse(init.body) }); return { ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: JSON.stringify({ choice: 0, story: 'A tour bus pulls up outside the shop.' }) }] } }] }) }; };
+  await chaosResponse({ world: 'cafe', level: 'l2', design: passing('l2'), scenario: level('l2').scenes.cafe.scenario }, { env, fetchImpl });
+  const cfg = seen[0].payload.generationConfig;
+  assert.equal(cfg.responseMimeType, 'application/json');
+  assert.equal(cfg.responseSchema.type, 'OBJECT');
+  assert.equal(cfg.responseSchema.properties.choice.type, 'INTEGER');
+  assert.ok(!('additionalProperties' in cfg.responseSchema));
+  assert.ok(!seen[0].url.includes('test-key'));
+  assert.ok(!JSON.stringify(seen[0].payload).includes('test-key'));
 });

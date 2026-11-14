@@ -24,7 +24,7 @@ Each workstream owns a set of paths. Change only the paths your task's workstrea
 | `ui-board` | `src/ui/board.js`, `src/ui/fx.js`, `src/ui/worlds.js` | Blocks, wires, the moving dots, world words and icons |
 | `ui-panels` | `src/ui/run-panel.js`, `src/ui/coach.js` | Charts, prediction, result, tutor column |
 | `ui-shell` | `index.html`, `styles/`, `src/ui/main.js`, `src/ui/state.js` | Layout, tokens, input handling, app state |
-| `ai` | `api/`, `src/ai/` | OpenAI tutor and chaos agent (serverless functions plus their client code) |
+| `ai` | `api/`, `src/ai/` | Gemini tutor and chaos agent (serverless functions plus their client code) |
 | `pitch` | `docs/pitch/` | Demo script, slides, Devpost text, video plan |
 
 Shared files, change only through a PR that says so in its title: `docs/contracts.md`, `docs/SPEC.md`, `package.json`, this file.
@@ -44,7 +44,7 @@ Shared files, change only through a PR that says so in its title: `docs/contract
 - **No unchecked AI output reaches the learner.** A chaos-agent attack is shown only after the simulator confirms that it breaks the design. A tutor message may mention only events in the run log.
 - **Both scenes, same answer.** A level's coffee shop and software scenes must give the same predicted number (the simulator runs in software units; the coffee shop divides by `SCALE`). Tests in `src/sim/sim.test.js` check this; extend them when you add or change a level.
 - **The learner predicts before every run.** Never cut or bypass the prediction step.
-- **Secrets stay server-side.** The OpenAI key lives only in the serverless function's environment (`OPENAI_API_KEY`). Never put it in client code or commit it.
+- **Secrets stay server-side.** The Gemini key lives only in the serverless function's environment (`GEMINI_API_KEY`). Never put it in client code or commit it.
 
 ## Style
 
