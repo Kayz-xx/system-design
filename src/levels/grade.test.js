@@ -11,14 +11,14 @@ const srv = (id, capacity, copies = 1, queueLimit = 500) => ({ id, type: 'server
 const lb = { id: 'lb', type: 'loadBalancer' };
 const db = (o = {}) => ({ id: 'db1', type: 'database', readCapacity: 300, writeCapacity: 100, replicas: 0, queueLimit: 2000, ...o });
 const cache = { id: 'c', type: 'cache', size: 'medium' };
-const queue = { id: 'q', type: 'queue', workers: 2, workerRate: 50, queueLimit: 5000 };
+const queue = { id: 'q', type: 'queue', workers: 2, workerRate: 50, queueLimit: 10000 };
 
 // [intended fix, a fix that passes only the sample]
 const CASES = {
   l1: [{ blocks: [srv('s1', 250, 1, 5000)], wires: [['traffic', 's1']] }, { blocks: [srv('s1', 200, 1, 5000)], wires: [['traffic', 's1']] }],
   l2: [{ blocks: [lb, srv('s', 100, 4)], wires: [['traffic', 'lb'], ['lb', 's']] }, { blocks: [lb, srv('s', 130, 3)], wires: [['traffic', 'lb'], ['lb', 's']] }],
   l3: [
-    { blocks: [srv('s', 1200, 1, 2000), cache, db({ replicas: 2 })], wires: [['traffic', 's'], ['s', 'c'], ['c', 'db1'], ['s', 'db1']] },
+    { blocks: [srv('s', 1200, 1, 2000), cache, db({ replicas: 3 })], wires: [['traffic', 's'], ['s', 'c'], ['c', 'db1'], ['s', 'db1']] },
     { blocks: [srv('s', 1000, 1, 2000), cache, db({ replicas: 2 })], wires: [['traffic', 's'], ['s', 'c'], ['c', 'db1'], ['s', 'db1']] }
   ],
   l4: [

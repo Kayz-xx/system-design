@@ -1,4 +1,4 @@
-// Run with: npm test. The auditor endpoint reruns the audit itself, only words facts from it,
+// Run with: npm test. The auditor endpoint redraws the survival map itself, only words facts from it,
 // and its reply passes the same check as the tutor's.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -14,20 +14,20 @@ const gemini = (text, seen) => async (url, init) => {
 const l1 = (capacity) => { const d = JSON.parse(JSON.stringify(LEVELS[0].design)); d.blocks[0].capacity = capacity; d.blocks[0].queueLimit = 5000; return d; };
 const l3 = () => { const d = JSON.parse(JSON.stringify(LEVELS[2].design)); d.blocks.find((b) => b.type === 'database').replicas = 2; return d; };
 
-test('the prompt holds the rerun audit: the rule and the mildest failing run', () => {
+test('the prompt holds the redrawn map: the rule and the mildest failing run', () => {
   const p = prepareAuditor({ world: 'software', level: 'l3', design: l3() });
-  assert.equal(p.result.survived, 843);
-  assert.match(p.prompt.input, /survived 843 of 1000/);
+  assert.equal(p.result.survived, 37);
+  assert.match(p.prompt.input, /survived 37 of 42 scenarios\. The worst case broke it/);
   assert.match(p.prompt.input, /PATTERN: it breaks when normal traffic is 1,060 requests a second or more and the cache restarts empty/);
   assert.match(p.prompt.input, /MILDEST FAILING RUN:\n- /);
   assert.match(p.prompt.instructions, /Do not say what number to set/);
 });
 
-test('the client cannot claim a better audit: numbers come from the design only', async () => {
+test('the client cannot claim a better map: numbers come from the design only', async () => {
   const seen = [];
-  await auditNoteResponse({ world: 'software', level: 'l3', design: l3(), survived: 1000, rule: 'none' }, { env, fetchImpl: gemini('When the cache restarts, the database gets more reads than it handles. Where does the queue grow?', seen) });
+  await auditNoteResponse({ world: 'software', level: 'l3', design: l3(), survived: 42, rule: 'none' }, { env, fetchImpl: gemini('When the cache restarts, the database gets more reads than it handles. Where does the queue grow?', seen) });
   const input = seen[0].contents[0].parts[0].text;
-  assert.match(input, /survived 843 of 1000/);
+  assert.match(input, /survived 37 of 42/);
 });
 
 test('a design that never breaks gets no note and no model call', async () => {

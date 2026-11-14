@@ -7,7 +7,7 @@ import { SCALE, LEVELS } from '../levels/levels.js';
 import { S, L, W, world, key, scene, design, run, attempts, nameOf, stars, esc, fmtN, fmt1, fmtPct, runScenario, submission } from './state.js';
 import { FIELDS } from './worlds.js';
 import { bestHtml } from './best-panel.js';
-import { auditHtml } from './audit-panel.js';
+import { mapHtml } from './survival-panel.js';
 
 export const predScale = () => scene().predict.scale || 1;
 export const predError = (g, a) => {
@@ -159,10 +159,10 @@ export function renderSide() {
     html = shell('Prediction', 'First, a little prediction.', `<div class="field"><label for="p-block">${cafe ? 'Where will it go wrong first?' : 'Which block fails first?'}</label><select id="p-block"><option value="">Choose one</option>${opts}<option value="none" ${p.block === 'none' ? 'selected' : ''}>${cafe ? 'Nowhere — it will be fine' : 'Nothing fails'}</option></select></div><div class="field"><label for="p-val">${esc(sn.predict.question)}</label><div class="unit-in"><input id="p-val" type="number" min="0" step="any" inputmode="decimal" value="${esc(p.value ?? '')}"><span>${esc(sn.predict.unit)}</span></div></div>${(S.problems[key()] || []).length ? `<ul class="problems">${S.problems[key()].map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}<div class="btn-row"><button class="btn primary" id="run-btn" disabled>${cafe ? 'Open the doors →' : 'Run the system →'}</button><span class="ready-note" id="ready-note"></span></div>`, 'prediction');
   } else if (phase === 'submit') {
     html = submitHtml(lv, w, false);
-  } else if (phase === 'audit' && sub && !sub.stale && sub.accepted) {
-    html = `<section class="sheet audit-sheet" aria-label="Audit" tabindex="-1">${closeTask}<h2>${cafe ? 'Skill or luck?' : 'Robust, or lucky?'}</h2>
-      <p>${cafe ? 'Four mornings went your way. Here is how your shop does on a thousand more.' : 'Four tests passed. Here is how your design does on a thousand more.'}</p>
-      ${auditHtml(lv.id, w)}
+  } else if (phase === 'map' && sub && !sub.stale) {
+    html = `<section class="sheet map-sheet" aria-label="Survival map" tabindex="-1">${closeTask}<h2>${cafe ? 'Where does your shop hold up?' : 'Where does your design hold up?'}</h2>
+      <p>${cafe ? 'Every square is one morning from the brief, from quiet to the worst case. The numbers are your tests.' : 'Every square is one scenario from the constraints, from easy to the worst case. The numbers are your tests.'}</p>
+      ${mapHtml(lv.id, w)}
       <div class="btn-row"><button class="btn" id="submission-open">← Back to results</button></div></section>`;
   } else if (phase === 'submission' && sub && !sub.stale) {
     html = submissionHtml(lv, w, sub);
@@ -216,7 +216,7 @@ function submissionHtml(lv, w, sub) {
       <p>${sub.passedCount} of ${sub.total} passed. ${guessed}</p>
       ${sub.failed ? `<p><b>${esc(sub.failed.name)}.</b> ${esc(sub.failed.story)} <span class="wrong">${esc(why(sub.failed))}.</span></p>` : ''}
       ${sub.accepted ? bestHtml(lv.id, w, sub.results[0].log.result.costPerHour) : ''}
-      <div class="btn-row">${next || '<button class="btn primary" id="return-build">Back to the floor →</button>'}${sub.accepted ? '<button class="text-btn" id="audit-open">Skill or luck? →</button>' : ''}${sub.failed ? `<button class="text-btn" data-watch="${esc(sub.failed.id)}">Watch this morning</button>` : ''}</div>
+      <div class="btn-row">${next || '<button class="btn primary" id="return-build">Back to the floor →</button>'}<button class="text-btn" id="map-open">Where does it hold? →</button>${sub.failed ? `<button class="text-btn" data-watch="${esc(sub.failed.id)}">Watch this morning</button>` : ''}</div>
       <details><summary>Open your notebook</summary><ol class="tests">${sub.results.map((t) => `<li class="${t.passed ? 'ok' : 'bad'}">
           <span class="mark" aria-label="${t.passed ? 'Passed' : 'Failed'}">${t.passed ? '✓' : '✗'}</span>
           <span><b>Test ${t.n}</b> · ${esc(t.name)}${t.hidden ? '' : ` <span class="muted">(sample)</span>`}${t.passed ? '' : `<small>${esc(why(t))}</small>`}</span>

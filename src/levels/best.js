@@ -24,7 +24,7 @@ export function candidates(level, world) {
   const caches = starterDb && reads ? [null, 'small', 'medium', 'large'].map((size) => size && { id: 'c1', type: 'cache', name: 'Cache', size }) : [null];
   const queues = [null];
   if (starterDb && writes) {
-    for (const workers of [1, 2, 3, 4]) for (const workerRate of range(25, 150, 25)) queues.push({ id: 'q1', type: 'queue', name: 'Queue', workers, workerRate, queueLimit: 5000 });
+    for (const workers of [1, 2, 3, 4]) for (const workerRate of range(25, 150, 25)) for (const queueLimit of [5000, 10000]) queues.push({ id: 'q1', type: 'queue', name: 'Queue', workers, workerRate, queueLimit });
   }
   const dbs = [null];
   if (starterDb) {

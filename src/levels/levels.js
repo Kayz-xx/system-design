@@ -6,8 +6,10 @@
 // `design` is the reference broken design the tests use. The board starts from `starter`,
 // which holds only what the learner is given. `tests` are hidden mornings that Submit runs
 // after the sample scenario; each changes the sample's shocks and gives the same verdict in both scenes.
-// `audit` is the Constraints box as ranges, in software units: the audit draws random mornings from it
-// (see audit.js). `p` is the chance a morning has that shock at all.
+// One hidden test is always the worst corner of the constraints: the simulator is monotone (more traffic or a
+// longer outage never shortens a line), so a design that survives it survives every easier morning.
+// `map` is the survival map (see survival.js): the two knobs of the Constraints that matter, in software
+// units, swept from easy to hard. Everything else is held at its worst (`fixed`).
 
 const PRIMER = 'https://github.com/donnemartin/system-design-primer';
 const SCALE = 50;
@@ -15,7 +17,7 @@ const SCALE = 50;
 const LEVELS = [
   {
     id: 'l1', n: 1, name: 'Morning rush', concept: 'Saturation', difficulty: 'Easy',
-    audit: { base: [40, 60], spike: { p: 0.9, t: [0, 90], dur: [10, 40], load: [100, 240] } },
+    map: { x: { dim: 'spikeDur', from: 10, to: 40, step: 2 }, y: { dim: 'spikeLoad', from: 100, to: 240, step: 10 }, fixed: { base: 60, spikeT: 30 } },
     reading: { label: 'Latency vs throughput', url: PRIMER + '#latency-vs-throughput' },
     translate: [
       ['Barista', 'Server'], ['The line', 'Queue'], ['Customers a minute', 'Requests a second'], ['50 minutes', '50 seconds']
@@ -67,7 +69,7 @@ const LEVELS = [
   },
   {
     id: 'l2', n: 2, name: 'Sick day', concept: 'Redundancy', difficulty: 'Easy',
-    audit: { base: [180, 280], serverFail: { p: 1, t: [10, 100], dur: [10, 90] } },
+    map: { x: { dim: 'failDur', from: 10, to: 90, step: 5 }, y: { dim: 'base', from: 180, to: 280, step: 10 }, fixed: { failT: 10 } },
     reading: { label: 'Load balancer', url: PRIMER + '#load-balancer', extra: { label: 'Availability patterns', url: PRIMER + '#availability-patterns' } },
     translate: [
       ['Shared line', 'Load balancer'], ['Baristas', 'Server copies'], ['Barista goes home sick', 'A copy crashes'], ['Walk-outs', 'Dropped requests']
@@ -84,7 +86,7 @@ const LEVELS = [
     tests: [
       { id: 'slow-week', name: { cafe: 'A slow week', software: 'Low traffic' }, story: { cafe: 'Only 3.6 customers a minute, and still one barista out sick.', software: '180 requests a second, and still one copy crashes.' }, change: { base: { reads: 150, writes: 30 } } },
       { id: 'friday', name: { cafe: 'Busy Friday', software: 'Peak day' }, story: { cafe: '5.6 customers a minute all morning, and a barista goes home sick at 8:10.', software: '280 requests a second, and one copy crashes at 0:40.' }, change: { base: { reads: 230, writes: 50 } } },
-      { id: 'early-sick', name: { cafe: 'Sick from the start', software: 'An early, long crash' }, story: { cafe: 'A barista calls in sick at 7:40 and is out for 90 minutes.', software: 'A copy crashes at 0:10 and stays down for 90 seconds.' }, change: { serverFail: { t: 10, dur: 90 } } }
+      { id: 'worst', name: { cafe: 'Busy and short-handed', software: 'Peak day, long crash' }, story: { cafe: 'The worst morning in the brief: 5.6 customers a minute, and a barista calls in sick at 7:40 for 90 minutes.', software: 'The worst case in the constraints: 280 requests a second, and a copy crashes at 0:10 for 90 seconds.' }, change: { base: { reads: 230, writes: 50 }, serverFail: { t: 10, dur: 90 } } }
     ],
     scenes: {
       cafe: {
@@ -123,7 +125,7 @@ const LEVELS = [
   },
   {
     id: 'l3', n: 3, name: 'Fridge sells out', concept: 'Caching', difficulty: 'Medium',
-    audit: { base: [900, 1100], cacheFlush: { p: 0.75, t: [10, 110], warm: 30 } },
+    map: { x: { dim: 'base', from: 900, to: 1100, step: 10 }, y: { dim: 'flush', from: 0, to: 1, step: 1 }, fixed: { flushT: 40 } },
     reading: { label: 'Cache', url: PRIMER + '#cache' },
     translate: [
       ['Grab-and-go fridge', 'Cache'], ['Espresso machine', 'Database'], ['Extra espresso machine', 'Read replica'], ['Fridge sells out', 'Cache flush']
@@ -144,14 +146,14 @@ const LEVELS = [
     },
     tests: [
       { id: 'stocked', name: { cafe: 'The fridge stays stocked', software: 'The cache stays warm' }, story: { cafe: 'Deliveries arrive on time all morning.', software: 'The cache never restarts.' }, change: { cacheFlush: null } },
-      { id: 'busier', name: { cafe: 'A busier morning', software: 'More reads' }, story: { cafe: '22 customers a minute, and the fridge stays stocked.', software: '1,100 reads a second, and the cache stays warm.' }, change: { base: { reads: 1100, writes: 0 }, cacheFlush: null } },
+      { id: 'worst', name: { cafe: 'A busy morning sells out', software: 'Peak traffic, cold cache' }, story: { cafe: 'The worst morning in the brief: 22 customers a minute, and the fridge sells out at 8:10.', software: 'The worst case in the constraints: 1,100 reads a second, and the cache restarts empty at 0:40.' }, change: { base: { reads: 1100, writes: 0 } } },
       { id: 'early-sellout', name: { cafe: 'Sold out by 7:40', software: 'An early restart' }, story: { cafe: 'The fridge sells out at 7:40 and takes 30 minutes to restock.', software: 'The cache restarts empty at 0:10 and warms up over 30 seconds.' }, change: { cacheFlush: { t: 10, warm: 30 } } }
     ],
     scenes: {
       cafe: {
         title: 'The fridge sells out',
         brief: 'You have an espresso machine that makes 6 drinks a minute. 20 customers come in each minute, and every customer pays at a barista first. A grab-and-go fridge of bottled cold brew could serve 9 in 10 of them. At 8:10 the fridge sells out, and restocking takes 30 minutes.',
-        goal: 'Lose fewer than 1% of customers and keep waits under 5 minutes, for $500 an hour or less.',
+        goal: 'Lose fewer than 1% of customers and keep waits under 5 minutes, for $550 an hour or less.',
         constraints: ['Normal mornings: 20 customers a minute. Busy mornings reach 22.', 'The fridge can sell out at any time; restocking takes 30 minutes.', 'An extra espresso machine adds 6 drinks a minute for $60 an hour.', 'A barista costs $20 an hour for every 2 customers a minute they serve.'],
         predict: { key: 'dbReadLoadAfterFlush', scale: SCALE, question: 'The minute the fridge is empty, how many customers a minute queue at the espresso machine?', unit: '/min' },
         hints: [
@@ -161,13 +163,13 @@ const LEVELS = [
         ],
         scenario: {
           duration: 150, base: { reads: 1000, writes: 0 }, cacheFlush: { t: 40, warm: 30 },
-          latencyTargetMs: 5000, targets: { errorRate: 0.01, slowShare: 0.05, cost: 2.5 }
+          latencyTargetMs: 5000, targets: { errorRate: 0.01, slowShare: 0.05, cost: 2.75 }
         }
       },
       software: {
         title: 'The cache restarts empty',
         brief: 'You have a database that handles 300 reads a second. Traffic is 1,000 reads a second, and every request goes through an app server first. A cache could answer 90% of reads. At 0:40 the cache restarts empty and takes 30 seconds to warm up.',
-        goal: 'Keep errors under 1% and slow requests under 5%, for $2.50 an hour or less.',
+        goal: 'Keep errors under 1% and slow requests under 5%, for $2.75 an hour or less.',
         constraints: ['Normal traffic: 1,000 reads a second. Busy days reach 1,100.', 'The cache can restart at any time; it takes 30 seconds to warm up.', 'A read replica adds 300 reads a second for $0.30 an hour.', 'A server costs $0.10 an hour per 100 requests a second.'],
         predict: { key: 'dbReadLoadAfterFlush', scale: 1, question: 'In the second after the restart, how many reads a second reach the database?', unit: 'req/s' },
         hints: [
@@ -177,14 +179,14 @@ const LEVELS = [
         ],
         scenario: {
           duration: 150, base: { reads: 1000, writes: 0 }, cacheFlush: { t: 40, warm: 30 },
-          latencyTargetMs: 200, targets: { errorRate: 0.01, slowShare: 0.05, cost: 2.5 }
+          latencyTargetMs: 200, targets: { errorRate: 0.01, slowShare: 0.05, cost: 2.75 }
         }
       }
     }
   },
   {
     id: 'l4', n: 4, name: 'Mobile orders', concept: 'Asynchronism', difficulty: 'Medium',
-    audit: { base: [40, 60], spike: { p: 0.9, t: [0, 90], dur: [10, 30], load: [100, 300] }, noun: { cafe: 'app orders', software: 'writes' } },
+    map: { x: { dim: 'spikeDur', from: 10, to: 30, step: 2 }, y: { dim: 'spikeLoad', from: 100, to: 300, step: 10 }, fixed: { base: 60, spikeT: 30 }, noun: { cafe: 'app orders', software: 'writes' } },
     reading: { label: 'Asynchronism', url: PRIMER + '#asynchronism' },
     translate: [
       ['Ticket rail', 'Message queue'], ['Baristas pulling tickets', 'Workers'], ['An app order', 'A write'], ['Order refused', 'Dropped write']
@@ -205,7 +207,7 @@ const LEVELS = [
     tests: [
       { id: 'no-promo', name: { cafe: 'No promo today', software: 'A normal day' }, story: { cafe: 'Just 1.2 app orders a minute all morning.', software: '60 writes a second and no burst.' }, change: { spike: null } },
       { id: 'bigger-promo', name: { cafe: 'The promo goes viral', software: 'A bigger burst' }, story: { cafe: '6 app orders a minute for 20 minutes.', software: '300 sign-ups a second for 20 seconds.' }, change: { spike: { t: 30, dur: 20, reads: 0, writes: 300 } } },
-      { id: 'long-promo', name: { cafe: 'A longer promo', software: 'A longer burst' }, story: { cafe: '5 app orders a minute for 30 minutes.', software: '250 sign-ups a second for 30 seconds.' }, change: { spike: { t: 30, dur: 30, reads: 0, writes: 250 } } }
+      { id: 'worst', name: { cafe: 'A long, viral promo', software: 'The biggest, longest burst' }, story: { cafe: 'The worst morning in the brief: 6 app orders a minute for 30 minutes.', software: 'The worst case in the constraints: 300 sign-ups a second for 30 seconds.' }, change: { spike: { t: 30, dur: 30, reads: 0, writes: 300 } } }
     ],
     scenes: {
       cafe: {

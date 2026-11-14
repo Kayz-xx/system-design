@@ -36,8 +36,8 @@ Without a key the endpoint answers 503 and the app shows the level's template hi
 
 ## POST /api/audit/note
 
-The auditor's note under the audit card. Body: `{ world, level, design }`. The server reruns the whole audit
-(`src/levels/audit.js`) from the design alone, then asks Gemini to explain in up to three sentences why the
+The auditor's note on the survival map. Body: `{ world, level, design }`. The server redraws the map
+(`src/levels/survival.js`) from the design alone, then asks Gemini to explain in up to three sentences why the
 mornings matching the failure rule break the design, using the log of the mildest failing morning. The reply
 passes the same check as the tutor's (`rejectReason`).
 

@@ -1,5 +1,5 @@
-// POST /api/audit/note — the auditor's note: why the random mornings that break a design break it.
-// Body: { world, level, design }. The server reruns the whole audit itself; the client's numbers are never used.
+// POST /api/audit/note — the auditor's note: why the mornings that break a design on its survival map break it.
+// Body: { world, level, design }. The server redraws the map itself; the client's numbers are never used.
 // Any failure returns an error, and the audit card simply shows no note.
 import { prepareAuditor } from '../../src/ai/auditor.js';
 import { rejectReason } from '../../src/ai/facts.js';

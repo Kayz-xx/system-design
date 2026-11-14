@@ -121,7 +121,7 @@ test('passing software first returns to the coffee shop instead of skipping it',
 test('the last chapter does not claim completion when earlier chapters were skipped', () => {
   renderLesson({
     level: 'l4', world: 'software', edit: (d) => {
-      d.blocks.push({ id: 'q1', type: 'queue', names: { cafe: 'Ticket rail', software: 'Queue' }, workers: 2, workerRate: 50, queueLimit: 5000 });
+      d.blocks.push({ id: 'q1', type: 'queue', names: { cafe: 'Ticket rail', software: 'Queue' }, workers: 2, workerRate: 50, queueLimit: 10000 });
       d.wires.push(['s1', 'q1'], ['q1', 'db1']);
     },
     attempt: { guess: 1000, actual: 1000, err: 0 }

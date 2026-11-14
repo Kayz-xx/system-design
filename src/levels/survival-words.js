@@ -1,4 +1,4 @@
-// Plain words for an audit rule, in the scene's world. Pure, so the audit card and the auditor endpoint
+// Plain words for a survival-map rule, in the scene's world. Pure, so the map and the auditor endpoint
 // say exactly the same thing.
 import { LEVELS, SCALE } from './levels.js';
 
@@ -34,6 +34,6 @@ function condWords(c, w, noun) {
 export function ruleWords(rule, w, levelId) {
   if (!rule || !rule.conds.length) return '';
   const lv = LEVELS.find((l) => l.id === levelId);
-  const noun = (lv.audit.noun && lv.audit.noun[w]) || (w === 'cafe' ? 'customers' : 'requests');
+  const noun = (lv.map.noun && lv.map.noun[w]) || (w === 'cafe' ? 'customers' : 'requests');
   return rule.conds.map((c) => condWords(c, w, noun)).join(' and ');
 }

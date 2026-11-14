@@ -8,7 +8,7 @@ import { renderBoard as drawBoard, renderOverlay, NODE_W, NODE_H } from './board
 import { fx, SPEED, startFx, sizeCanvas, resetFx, invalidateColors } from './fx.js';
 import { renderRun, renderRunBody, tickFromPointer } from './run-panel.js';
 import { renderSide, predScale, predError } from './coach.js';
-import { runAudit, auditMorning } from './audit-panel.js';
+import { drawMap, mapMorning, cellLabel } from './survival-panel.js';
 
 /* ---------- Header and palette ---------- */
 function renderTabs() {
@@ -146,7 +146,7 @@ function updateRunReadiness() {
 function updateWorkbench() {
   renderConnections(); renderEditTools();
   const playing = isPlaying();
-  document.querySelectorAll('[data-add], #connection-body button, #connection-body select, [data-field], #del-block, #del-wire, #p-tests, [data-watch], #audit-btn, #audit-watch, #audit-open').forEach((el) => {
+  document.querySelectorAll('[data-add], #connection-body button, #connection-body select, [data-field], #del-block, #del-wire, #p-tests, [data-watch], [data-cell], #map-open').forEach((el) => {
     el.disabled = playing || (el.id === 'connect-btn' && !design().blocks.length);
   });
   updateRunReadiness();
@@ -372,14 +372,11 @@ document.addEventListener('click', (e) => {
     if (t && !isPlaying()) watchTest(t);
     return;
   }
-  if (id === 'audit-open') { if (!isPlaying()) { runAudit(); setTask('audit'); } return; }
-  if (id === 'audit-btn') { if (!isPlaying()) { runAudit(); renderSide(); updateWorkbench(); document.querySelector('.audit')?.scrollIntoView({ block: 'nearest', behavior: reducedMotion() ? 'auto' : 'smooth' }); } return; }
-  if (id === 'audit-watch') {
-    const m = auditMorning();
-    if (m && !isPlaying()) {
-      const label = world() === 'cafe' ? `Random morning #${m.i + 1}` : `Random scenario #${m.i + 1}`;
-      play(key(), simulate(simDesign(design()), m.scenario), false, { scenario: m.scenario, kind: 'test', label });
-    }
+  if (id === 'map-open') { if (!isPlaying()) { drawMap(); setTask('map'); } return; }
+  const cell = e.target.closest('[data-cell]');
+  if (cell) {
+    const m = mapMorning(cell.dataset.cell);
+    if (m && !isPlaying()) play(key(), simulate(simDesign(design()), m.scenario), false, { scenario: m.scenario, kind: 'test', label: cellLabel(m, world(), S.level) });
     return;
   }
   if (id === 'to-software') { switchScene('software', true); return; }

@@ -109,60 +109,6 @@ export const BEST = {
   },
   'l3': {
     cafe: {
-      cost: 1.85,
-      design: {
-        blocks: [
-          {
-            id: 's1',
-            type: 'server',
-            name: 'Server',
-            capacity: 1100,
-            copies: 1,
-            queueLimit: 500
-          },
-          {
-            id: 'db1',
-            type: 'database',
-            names: {
-              cafe: 'Espresso machine',
-              software: 'Database'
-            },
-            readCapacity: 300,
-            writeCapacity: 100,
-            replicas: 1,
-            queueLimit: 2000,
-            x: 690,
-            y: 210,
-            name: 'Database'
-          },
-          {
-            id: 'c1',
-            type: 'cache',
-            name: 'Cache',
-            size: 'small'
-          }
-        ],
-        wires: [
-          [
-            'traffic',
-            's1'
-          ],
-          [
-            's1',
-            'db1'
-          ],
-          [
-            's1',
-            'c1'
-          ],
-          [
-            'c1',
-            'db1'
-          ]
-        ]
-      }
-    },
-    software: {
       cost: 2.15,
       design: {
         blocks: [
@@ -215,20 +161,60 @@ export const BEST = {
           ]
         ]
       }
-    }
-  },
-  'l4': {
-    cafe: {
-      cost: 0.55,
+    },
+    software: {
+      cost: 2.4,
       design: {
         blocks: [
           {
             id: 's1',
             type: 'server',
             name: 'Server',
-            capacity: 250,
+            capacity: 1100,
             copies: 1,
-            queueLimit: 5000
+            queueLimit: 500
+          },
+          {
+            id: 'db1',
+            type: 'database',
+            names: {
+              cafe: 'Espresso machine',
+              software: 'Database'
+            },
+            readCapacity: 300,
+            writeCapacity: 100,
+            replicas: 3,
+            queueLimit: 2000,
+            x: 690,
+            y: 210,
+            name: 'Database'
+          }
+        ],
+        wires: [
+          [
+            'traffic',
+            's1'
+          ],
+          [
+            's1',
+            'db1'
+          ]
+        ]
+      }
+    }
+  },
+  'l4': {
+    cafe: {
+      cost: 0.525,
+      design: {
+        blocks: [
+          {
+            id: 's1',
+            type: 'server',
+            name: 'Server',
+            capacity: 300,
+            copies: 1,
+            queueLimit: 500
           },
           {
             id: 'db1',
@@ -238,7 +224,7 @@ export const BEST = {
               software: 'Database'
             },
             readCapacity: 100,
-            writeCapacity: 100,
+            writeCapacity: 50,
             replicas: 0,
             queueLimit: 200,
             x: 690,
@@ -250,8 +236,8 @@ export const BEST = {
             type: 'queue',
             name: 'Queue',
             workers: 1,
-            workerRate: 100,
-            queueLimit: 5000
+            workerRate: 50,
+            queueLimit: 10000
           }
         ],
         wires: [
@@ -275,7 +261,7 @@ export const BEST = {
       }
     },
     software: {
-      cost: 0.6,
+      cost: 0.525,
       design: {
         blocks: [
           {
@@ -294,7 +280,7 @@ export const BEST = {
               software: 'Database'
             },
             readCapacity: 100,
-            writeCapacity: 100,
+            writeCapacity: 50,
             replicas: 0,
             queueLimit: 200,
             x: 690,
@@ -306,8 +292,8 @@ export const BEST = {
             type: 'queue',
             name: 'Queue',
             workers: 1,
-            workerRate: 100,
-            queueLimit: 5000
+            workerRate: 50,
+            queueLimit: 10000
           }
         ],
         wires: [
