@@ -199,6 +199,7 @@ button, a, input, select, summary { -webkit-tap-highlight-color: transparent; }
 button { transition: background-color .18s, border-color .18s, box-shadow .18s; }
 button:disabled { cursor: not-allowed; }
 .skip-link { position: fixed; top: -100px; left: 16px; z-index: 10; padding: 12px; background: var(--panel); }
+.skip-link:not(:focus) { clip-path: inset(50%); width: 1px; height: 1px; overflow: hidden; padding: 0; white-space: nowrap; }
 .skip-link:focus { top: 12px; }
 .top { padding: 18px max(28px, env(safe-area-inset-right)) 18px max(28px, env(safe-area-inset-left)); background: var(--panel); }
 .brand { flex-direction: row; align-items: center; gap: 12px; color: var(--ink); text-decoration: none; }
@@ -253,7 +254,7 @@ h1 em { color: var(--accent); font-weight: 500; }
 .canvas-head { min-height: 51px; background: var(--panel); padding: 12px 16px; }
 .canvas-head .world { font-size: 16px; font-weight: 500; }
 .board-scroll { overflow: auto; overscroll-behavior-x: contain; max-width: 100%; }
-.stage { isolation: isolate; min-width: 900px; }
+.stage { isolation: isolate; min-width: 900px; width: max(900px, 100%); }
 :root[data-world="cafe"] .stage { background-image: linear-gradient(var(--board-line) 1px, transparent 1px), linear-gradient(90deg, var(--board-line) 1px, transparent 1px); background-size: 40px 40px; }
 .stage::before { content: ""; position: absolute; z-index: -1; top: 22px; right: 30px; width: 138px; height: 70px; background: linear-gradient(90deg, transparent 48%, var(--wood) 48%, var(--wood) 52%, transparent 52%), linear-gradient(transparent 48%, var(--wood) 48%, var(--wood) 52%, transparent 52%), var(--window); border: 6px solid var(--wood); border-radius: 48px 48px 4px 4px; box-shadow: 5px 5px 0 var(--shadow); opacity: .8; }
 .stage::after { content: ""; position: absolute; z-index: -1; bottom: 24px; left: 28px; right: 28px; height: 25px; border: 1px solid var(--wood-edge); border-radius: 6px; background: repeating-linear-gradient(0deg, transparent 0 5px, var(--shadow) 5px 6px), var(--wood); box-shadow: 0 6px 0 var(--shadow); }
@@ -288,7 +289,8 @@ h1 em { color: var(--accent); font-weight: 500; }
 .foot { padding: 38px 32px 26px; color: var(--ink-3); font-size: 11px; text-align: center; }
 .foot b { font-family: var(--display); font-size: 16px; font-weight: 500; color: var(--ink-2); }
 .foot p { max-width: 650px; margin: 8px auto; }
-@media (min-width: 1500px) { .stage { width: 100%; } }
+.jump-predict { display: none; }
+@media (max-width: 1350px) { .board-key span:last-child::before { content: "Scroll to explore · "; } }
 @media (max-width: 1150px) {
   .top-note, .desk-note { display: none; }
   .recipe { padding-right: 0; }
@@ -299,6 +301,7 @@ h1 em { color: var(--accent); font-weight: 500; }
   .charts { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 850px) {
+  .jump-predict { display: inline-flex; align-self: start; text-decoration: none; align-items: center; }
   .welcome { padding-top: 28px; }
   .recipe { display: none; }
   .app { grid-template-columns: minmax(0, 1fr); grid-template-areas: "main" "side"; }

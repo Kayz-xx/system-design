@@ -16,6 +16,10 @@ export const fmt1 = (n) => {
 export const fmtPct = (x) => { const p = x * 100; return (p > 0 && p < 10 ? p.toFixed(1) : Math.round(p)) + '%'; };
 export const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+// A frame's timestamp can precede performance.now() sampled by its event handler.
+export const playbackTick = (now, start, speed, length) =>
+  Math.max(0, Math.min(length - 1, Math.floor(((now - start) / 1000) * speed)));
+
 export const S = {
   level: 'l1',
   scene: Object.fromEntries(LEVELS.map((l) => [l.id, 'cafe'])),

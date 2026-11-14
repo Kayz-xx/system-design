@@ -1,7 +1,7 @@
 // Entry point: header, palette, actions and input handling. Wires the render registry R.
 import { simulate, validate, canWire, blockCost, REFUSAL } from '../sim/sim.js';
 import { LEVELS } from '../levels/levels.js';
-import { S, R, L, W, world, key, scene, design, run, attempts, typeOf, simDesign, stars, nameOf, clone, esc, reducedMotion, rememberDesign, endDesignEdit, historyStatus, restoreDesign, resetDesign } from './state.js';
+import { S, R, L, W, world, key, scene, design, run, attempts, typeOf, simDesign, stars, nameOf, clone, esc, reducedMotion, rememberDesign, endDesignEdit, historyStatus, restoreDesign, resetDesign, playbackTick } from './state.js';
 import { WORLDS, FIELDS, DEFAULTS, CAFE_REFUSAL, cafeWords, icon } from './worlds.js';
 import { renderBoard as drawBoard, renderOverlay, NODE_W, NODE_H } from './board.js';
 import { fx, SPEED, startFx, sizeCanvas, resetFx, invalidateColors } from './fx.js';
@@ -194,7 +194,7 @@ function play(k, log, stale = false) {
   const start = performance.now();
   function step(now) {
     if (S.runs[k] !== r) return;
-    r.t = Math.min(N - 1, Math.floor(((now - start) / 1000) * SPEED));
+    r.t = playbackTick(now, start, SPEED, N);
     if (key() === k) { renderBoard(); renderRunBody(); }
     if (r.t < N - 1) requestAnimationFrame(step);
     else { r.done = true; if (key() === k) renderAll(); else renderTabs(); }

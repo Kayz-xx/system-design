@@ -133,7 +133,7 @@ export function renderSide() {
   const opts = d.blocks.map((b) => `<option value="${b.id}" ${p.block === b.id ? 'selected' : ''}>${esc(b.names[w])}</option>`).join('');
   const ready = p.block && p.value !== undefined && p.value !== '';
   const playing = r && !r.done;
-  html += `<section class="panel" aria-label="Prediction">
+  html += `<section class="panel" id="prediction" tabindex="-1" aria-label="Prediction">
       <div class="label">Predict${atts.length ? ` · try ${atts.length + 1}` : ''}</div>
       <div class="field"><label for="p-block">${w === 'cafe' ? 'Where does it go wrong first?' : 'Which block fails first?'}</label>
         <select id="p-block"><option value="">Choose one</option>${opts}<option value="none" ${p.block === 'none' ? 'selected' : ''}>${w === 'cafe' ? 'Nowhere, it’s fine' : 'Nothing fails'}</option></select></div>
