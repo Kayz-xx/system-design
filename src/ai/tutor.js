@@ -1,4 +1,4 @@
-// Client for the OpenAI tutor. Browser-safe: no key, no secrets, only a call to our own /api/tutor.
+// Client for the AI tutor. Browser-safe: no key, no secrets, only a call to our own /api/tutor.
 // Usage from the coach column (ui-panels):
 //   const { text, source } = await askTutor(request, { fallback: scene.hints[step - 1] });
 // `source` is 'ai' when the tutor answered and 'template' otherwise. Escape `text` before putting it in HTML.

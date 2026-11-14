@@ -4,7 +4,7 @@ Each item becomes a GitHub issue with its workstream as a label. The order is pr
 
 ## ai
 
-1. **OpenAI tutor endpoint.** `api/tutor.js` per `docs/contracts.md`, with a 4 s timeout and the template fallback in the client. Done when a failed run shows a worded hint that mentions only logged events, and pulling the key still shows the template.
+1. **Gemini tutor endpoint.** `api/tutor.js` per `docs/contracts.md`, with a 4 s timeout and the template fallback in the client. Done when a failed run shows a worded hint that mentions only logged events, and pulling the key still shows the template.
 2. **Chaos agent loop.** `api/chaos/plan.js` plus `src/ai/chaos.js`. The loop is plan, simulate, retry up to five times, and show only a confirmed attack with its story in the world's words. Done when a passing Level 1 coffee shop gets broken by a realistic incident, and a design that survives every attempt is told so.
 3. **Attack search to back the agent.** A deterministic search over shock combinations within the budget, listing the attacks that break the design. The agent picks the most realistic one and tells its story. This answers "why not brute force".
 

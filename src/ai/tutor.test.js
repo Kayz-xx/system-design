@@ -1,4 +1,4 @@
-// Run with: npm test. No network: OpenAI and /api/tutor are replaced by fake fetch functions.
+// Run with: npm test. No network: Gemini and /api/tutor are replaced by fake fetch functions.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { LEVELS } from '../levels/levels.js';
@@ -12,11 +12,11 @@ const body = (id, world, extra = {}) => ({
   world, level: id, design: clone(level(id).design), scenario: level(id).scenes[world].scenario,
   events: [], result: {}, prediction: { block: 's1', value: 20, actual: 50 }, hintStep: 1, ...extra
 });
-const openai = (text, seen = []) => async (url, init) => {
+const gemini = (text, seen = []) => async (url, init) => {
   seen.push({ url, init, payload: JSON.parse(init.body) });
-  return { ok: true, json: async () => ({ output: [{ type: 'message', content: [{ type: 'output_text', text }] }] }) };
+  return { ok: true, json: async () => ({ candidates: [{ content: { role: 'model', parts: [{ text }] } }] }) };
 };
-const env = { OPENAI_API_KEY: 'test-key' };
+const env = { GEMINI_API_KEY: 'test-key' };
 
 test('facts come from the log, in the world’s units', () => {
   const p = prepareTutor(body('l1', 'cafe'));
@@ -74,23 +74,24 @@ test('replies that break the rules are rejected', () => {
 
 test('endpoint: a good reply comes back, and the key stays in the header', async () => {
   const seen = [];
-  const out = await tutorResponse(body('l1', 'cafe'), { env, fetchImpl: openai('At 8:20, how many people were still in line?', seen) });
+  const out = await tutorResponse(body('l1', 'cafe'), { env, fetchImpl: gemini('At 8:20, how many people were still in line?', seen) });
   assert.equal(out.status, 200);
   assert.equal(out.json.text, 'At 8:20, how many people were still in line?');
-  assert.equal(seen[0].url, 'https://api.openai.com/v1/responses');
-  assert.equal(seen[0].init.headers.authorization, 'Bearer test-key');
+  assert.equal(seen[0].url, 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent');
+  assert.equal(seen[0].init.headers['x-goog-api-key'], 'test-key');
   assert.ok(!JSON.stringify(seen[0].payload).includes('test-key'));
-  assert.equal(seen[0].payload.model, 'gpt-4.1-mini');
+  assert.match(seen[0].payload.systemInstruction.parts[0].text, /tutor in System Design Sandbox/);
+  assert.equal(seen[0].payload.generationConfig.thinkingConfig.thinkingBudget, 0);
 });
 
 test('endpoint: failures return errors, never unchecked text', async () => {
   const b = body('l1', 'cafe');
-  assert.equal((await tutorResponse(b, { env: {}, fetchImpl: openai('hi there friend') })).status, 503);
-  assert.equal((await tutorResponse({ ...b, level: 'l9' }, { env, fetchImpl: openai('x') })).status, 400);
-  assert.equal((await tutorResponse(null, { env, fetchImpl: openai('x') })).status, 400);
+  assert.equal((await tutorResponse(b, { env: {}, fetchImpl: gemini('hi there friend') })).status, 503);
+  assert.equal((await tutorResponse({ ...b, level: 'l9' }, { env, fetchImpl: gemini('x') })).status, 400);
+  assert.equal((await tutorResponse(null, { env, fetchImpl: gemini('x') })).status, 400);
   assert.equal((await tutorResponse(b, { env, fetchImpl: async () => ({ ok: false, json: async () => ({}) }) })).status, 502);
   assert.equal((await tutorResponse(b, { env, fetchImpl: async () => { throw new Error('offline'); } })).status, 502);
-  const bad = await tutorResponse(b, { env, fetchImpl: openai('Your server is overloaded, add capacity.') });
+  const bad = await tutorResponse(b, { env, fetchImpl: gemini('Your server is overloaded, add capacity.') });
   assert.equal(bad.status, 502);
   assert.ok(!bad.json.text);
   const slow = (url, init) => new Promise((_, rej) => init.signal.addEventListener('abort', () => rej(Object.assign(new Error('aborted'), { name: 'AbortError' }))));

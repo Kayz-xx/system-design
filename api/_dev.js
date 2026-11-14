@@ -1,5 +1,5 @@
 // Local dev server with the API routes: node api/_dev.js, then open http://localhost:5173
-// Serves the static app like `npm run dev`, plus POST /api/tutor. Reads OPENAI_API_KEY from .env if present.
+// Serves the static app like `npm run dev`, plus POST /api/tutor. Reads GEMINI_API_KEY from .env if present.
 // The leading underscore keeps Vercel from deploying this file as a route.
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
@@ -36,5 +36,5 @@ createServer(async (req, res) => {
     res.end('Not found');
   }
 }).listen(PORT, () => {
-  console.log(`http://localhost:${PORT}  (tutor ${process.env.OPENAI_API_KEY ? 'on' : 'off: no OPENAI_API_KEY, the app shows template hints'})`);
+  console.log(`http://localhost:${PORT}  (tutor ${process.env.GEMINI_API_KEY ? 'on' : 'off: no GEMINI_API_KEY, the app shows template hints'})`);
 });

@@ -1,18 +1,18 @@
 # api
 
-Serverless functions (Vercel-style `api/*.js`). Owned by the `ai` workstream. See `docs/contracts.md` for request and response shapes. The OpenAI key comes from `OPENAI_API_KEY` in the host environment and never reaches the browser.
+Serverless functions (Vercel-style `api/*.js`). Owned by the `ai` workstream. See `docs/contracts.md` for request and response shapes. The Gemini key comes from `GEMINI_API_KEY` in the host environment and never reaches the browser.
 
 | File | What it is |
 | --- | --- |
-| `tutor.js` | `POST /api/tutor`. Reruns `simulate()` on the cleaned design, turns the log into facts in the world's words, asks OpenAI for one hint, and checks the reply before returning `{ text, step }`. |
-| `chaos/plan.js` | `POST /api/chaos/plan`. Runs the attack search on the cleaned design, lets OpenAI pick the most realistic proven attack and write its story, and checks the story. Returns `{ attack, story, facts, source }`, or `{ attack: null, survived: true }`. Without a key it returns the mildest attack with a template story. |
-| `_openai.js` | The shared Responses API call and JSON handler. Not a route. |
+| `tutor.js` | `POST /api/tutor`. Reruns `simulate()` on the cleaned design, turns the log into facts in the world's words, asks Gemini for one hint, and checks the reply before returning `{ text, step }`. |
+| `chaos/plan.js` | `POST /api/chaos/plan`. Runs the attack search on the cleaned design, lets Gemini pick the most realistic proven attack and write its story, and checks the story. Returns `{ attack, story, facts, source }`, or `{ attack: null, survived: true }`. Without a key it returns the mildest attack with a template story. |
+| `_llm.js` | The shared Gemini `generateContent` call and JSON handler. Not a route. |
 | `_dev.js` | Local server: the static app plus the API routes. Not deployed (leading underscore). |
 
 ## Run locally with the tutor
 
 ```
-cp .env.example .env        # then set OPENAI_API_KEY; OPENAI_MODEL defaults to gpt-4.1-mini
+cp .env.example .env        # then set GEMINI_API_KEY; GEMINI_MODEL defaults to gemini-2.5-flash
 node api/_dev.js            # http://localhost:5173
 ```
 
@@ -24,7 +24,7 @@ Without a key the endpoint answers 503 and the app shows the level's template hi
 - Block names are cleaned (40 characters, no brackets or backticks) before they go into the prompt.
 - The prompt lists only logged facts and names the blocks the reply must not mention.
 - The reply is rejected (502) if it names a block outside the log, uses software words in the coffee shop, or is empty or too long.
-- OpenAI gets 3.5 s; the client gives up at 4 s. Every failure means the template hint.
+- Gemini gets 3.5 s (thinking is turned off on Flash models to keep it fast); the client gives up at 4 s. Every failure means the template hint.
 
 ## How the chaos agent stays honest
 

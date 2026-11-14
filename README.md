@@ -26,7 +26,7 @@ No install step and no build. Node 20 or newer for the tests, plus Python 3 for 
 | `src/sim/` | The simulator: `simulate(design, scenario)` returns a per-tick run log |
 | `src/levels/` | Levels, each with a coffee shop scene and a software scene |
 | `src/ui/` | The interface: board, moving dots, charts and coach column |
-| `api/` | Serverless functions for the OpenAI tutor and chaos agent (to build) |
+| `api/` | Serverless functions for the Gemini tutor and chaos agent |
 | `docs/SPEC.md` | The design and its decisions |
 | `docs/contracts.md` | Data shapes every part agrees on |
 | `docs/backlog.md` | Open work by workstream |

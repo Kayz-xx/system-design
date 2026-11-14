@@ -1,5 +1,5 @@
 // The coach column: scene steps, brief, inspector, prediction, result and tutor.
-// Hints come from the OpenAI tutor (src/ai/tutor.js) when it answers, and from the level's template hints otherwise.
+// Hints come from the AI tutor (Gemini, via src/ai/tutor.js) when it answers, and from the level's template hints otherwise.
 // Either way the tutor reads only the run log.
 import { CACHE_SIZES, blockCost } from '../sim/sim.js';
 import { askTutor, tutorRequest } from '../ai/tutor.js';
