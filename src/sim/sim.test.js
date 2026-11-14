@@ -61,3 +61,36 @@ test('wiring rules', () => {
   const d2 = withNames(clone(level('l1').design), 'software'); d2.blocks[0].copies = 3;
   assert.ok(Sim.validate(d2).some((p) => p.includes('load balancer')));
 });
+
+test('queue block: absorbs a write burst, drains at the workers’ rate, and overflows when too slow', () => {
+  const sc = { duration: 150, base: { reads: 0, writes: 60 }, spike: { t: 30, dur: 20, reads: 0, writes: 250 }, latencyTargetMs: 300, targets: { errorRate: 0.01, slowShare: 0.05, cost: 0.6 } };
+  const s = { id: 's1', type: 'server', name: 'App', capacity: 300, copies: 1, queueLimit: 2000 };
+  const db = { id: 'db1', type: 'database', name: 'DB', readCapacity: 100, writeCapacity: 100, replicas: 0, queueLimit: 200 };
+  const q = { id: 'q1', type: 'queue', name: 'Q', workers: 2, workerRate: 50, queueLimit: 5000 };
+  const wires = [['traffic', 's1'], ['s1', 'db1'], ['s1', 'q1'], ['q1', 'db1']];
+  const a = Sim.simulate({ blocks: [s, db, q], wires }, sc);
+  assert.equal(a.result.passed, true, JSON.stringify(a.result));
+  assert.equal(a.metrics.peakBacklog, 3000);
+  assert.equal(a.result.firstFailure, null);
+  assert.ok(a.events.some((e) => e.type === 'backlog' && e.block === 'q1' && e.t === 30));
+  assert.ok(a.events.some((e) => e.type === 'drained' && e.block === 'q1' && e.t === 124));
+  assert.ok(a.ticks.every((r) => r.blocks.db1.writeLoad <= 100 + 1e-9), 'workers never push the database past its write capacity');
+  const slow = Sim.simulate({ blocks: [s, db, { ...q, workers: 1 }], wires }, sc);
+  assert.equal(slow.result.checks.errors, false);
+  assert.equal(slow.result.firstFailure.block, 'q1');
+  const fast = Sim.simulate({ blocks: [s, db, { ...q, workers: 4 }], wires }, sc);
+  assert.equal(fast.result.firstFailure.block, 'db1');
+  assert.ok(fast.metrics.peakErrorRate <= 100);
+  assert.equal(Sim.blockCost(q), 0.1);
+});
+
+test('queue wiring: server to queue to database only', () => {
+  const d = { blocks: [{ id: 's1', type: 'server', name: 'S' }, { id: 'q1', type: 'queue', name: 'Q' }, { id: 'db1', type: 'database', name: 'D' }, { id: 'c1', type: 'cache', name: 'C', size: 'small' }], wires: [] };
+  assert.equal(Sim.canWire(d, 's1', 'q1').ok, true);
+  assert.equal(Sim.canWire(d, 'q1', 'db1').ok, true);
+  assert.equal(Sim.canWire(d, 'traffic', 'q1').ok, false);
+  assert.equal(Sim.canWire(d, 'q1', 'c1').ok, false);
+  assert.equal(Sim.canWire(d, 'c1', 'q1').ok, false);
+  d.wires.push(['traffic', 's1'], ['s1', 'q1']);
+  assert.ok(Sim.validate(d).some((p) => /Q needs a database/.test(p)));
+});

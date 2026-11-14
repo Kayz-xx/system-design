@@ -2,7 +2,7 @@
 // A deterministic pure function: simulate(design, scenario) -> run log.
 // One tick is one simulated second. It counts requests per second; it does not follow single requests.
 
-const BASE_MS = { loadBalancer: 1, server: 20, cache: 1, database: 10 };
+const BASE_MS = { loadBalancer: 1, server: 20, cache: 1, database: 10, queue: 2 };
 
 const CACHE_SIZES = {
   small: { hit: 0.8, cost: 0.05, label: 'Small (80% hits)' },
@@ -11,22 +11,24 @@ const CACHE_SIZES = {
 };
 
 const TYPE_NAME = {
-  traffic: 'Traffic', loadBalancer: 'Load balancer', server: 'Server', cache: 'Cache', database: 'Database'
+  traffic: 'Traffic', loadBalancer: 'Load balancer', server: 'Server', cache: 'Cache', database: 'Database', queue: 'Queue'
 };
 
 // Which block types may send requests to which.
 const ALLOWED = {
   traffic: ['loadBalancer', 'server'],
   loadBalancer: ['server'],
-  server: ['cache', 'database'],
+  server: ['cache', 'database', 'queue'],
   cache: ['database'],
+  queue: ['database'],
   database: []
 };
 
 const REFUSAL = {
   traffic: 'Traffic enters through a load balancer or a single server.',
   loadBalancer: 'A load balancer only spreads requests across servers.',
-  server: 'A server sends reads to a cache, and reads or writes to a database.',
+  server: 'A server sends reads to a cache, writes to a queue, and reads or writes to a database.',
+  queue: 'A queue’s workers send the writes on to a database.',
   cache: 'A cache sends its misses to a database.',
   database: 'A database is the end of the line. It answers requests and sends none on.'
 };
@@ -37,6 +39,7 @@ function blockCost(b) {
     case 'loadBalancer': return 0.05;
     case 'cache': return CACHE_SIZES[b.size].cost;
     case 'database': return 0.1 * (b.readCapacity / 100) * (1 + b.replicas) + 0.1 * (b.writeCapacity / 100);
+    case 'queue': return 0.05 + 0.05 * (b.workers * b.workerRate) / 100;
     default: return 0;
   }
 }
@@ -67,7 +70,7 @@ function canWire(d, from, to) {
   if (d.wires.some(([a, b]) => a === from && b === to)) return no('These two blocks are already connected.');
   if (ft === 'traffic' && d.wires.some(([a]) => a === 'traffic')) return no('Traffic enters through one block. Remove the existing traffic wire first.');
   if ((tt === 'server' || tt === 'loadBalancer') && d.wires.some(([, b]) => b === to)) return no(`${nameOf(d, to)} already has a block sending it traffic.`);
-  if ((ft === 'server' || ft === 'cache') && d.wires.some(([a, b]) => a === from && typeOf(d, b) === tt)) {
+  if ((ft === 'server' || ft === 'cache' || ft === 'queue') && d.wires.some(([a, b]) => a === from && typeOf(d, b) === tt)) {
     return no(`${nameOf(d, from)} already has a ${TYPE_NAME[tt].toLowerCase()}.`);
   }
   return { ok: true };
@@ -84,6 +87,7 @@ function validate(d) {
     if (ins(b.id).length === 0) problems.push(`${b.name} gets no requests. Wire something into it, or remove it.`);
     if (b.type === 'loadBalancer' && outs(b.id).length === 0) problems.push(`${b.name} has no servers behind it.`);
     if (b.type === 'cache' && !outs(b.id).some((id) => typeOf(d, id) === 'database')) problems.push(`${b.name} needs a database behind it to send its misses to.`);
+    if (b.type === 'queue' && !outs(b.id).some((id) => typeOf(d, id) === 'database')) problems.push(`${b.name} needs a database behind it for its workers to write to.`);
     if (b.type === 'server' && b.copies > 1 && ins(b.id).includes('traffic')) {
       problems.push(`${b.name} has ${b.copies} copies. Put a load balancer in front of it so traffic is split between them.`);
     }
@@ -108,15 +112,19 @@ function simulate(d, sc) {
   const servers = d.blocks.filter((b) => b.type === 'server');
   const caches = d.blocks.filter((b) => b.type === 'cache');
   const dbs = d.blocks.filter((b) => b.type === 'database');
+  const queues = d.blocks.filter((b) => b.type === 'queue');
 
   const route = {};
   servers.forEach((s) => {
     const cache = of(s.id, 'cache');
     const db = of(s.id, 'database') || (cache ? of(cache, 'database') : undefined);
-    route[s.id] = { cache, db };
+    // Writes go to the server's queue if it has one, otherwise straight to its database.
+    route[s.id] = { cache, db, queue: of(s.id, 'queue') };
   });
   const cacheDb = {};
   caches.forEach((c) => { cacheDb[c.id] = of(c.id, 'database'); });
+  const queueDb = {};
+  queues.forEach((q) => { queueDb[q.id] = of(q.id, 'database'); });
 
   // The server-failure shock hits the first server that traffic reaches.
   let failId = null;
@@ -124,7 +132,9 @@ function simulate(d, sc) {
 
   const sq = {}; servers.forEach((s) => { sq[s.id] = { r: 0, w: 0 }; });
   const dq = {}; dbs.forEach((b) => { dq[b.id] = { r: 0, w: 0 }; });
+  const qq = {}; queues.forEach((q) => { qq[q.id] = 0; });
   const satActive = {}, dropActive = {};
+  let peakBacklog = 0;
   const ticks = [], events = [];
   const target = sc.latencyTargetMs;
   let totEmit = 0, totDrop = 0, totSlow = 0, totDone = 0;
@@ -166,6 +176,7 @@ function simulate(d, sc) {
     // Servers.
     const cIn = {}; caches.forEach((c) => { cIn[c.id] = 0; });
     const dIn = {}; dbs.forEach((b) => { dIn[b.id] = { r: 0, w: 0 }; });
+    const qIn = {}; queues.forEach((q) => { qIn[q.id] = 0; });
     const sOut = {};
     servers.forEach((s) => {
       const cap = s.capacity * alive(s);
@@ -191,8 +202,29 @@ function simulate(d, sc) {
       sOut[s.id] = { sr, sw, lat, left };
       const rt = route[s.id];
       if (rt.cache) cIn[rt.cache] += sr; else if (rt.db) dIn[rt.db].r += sr;
-      if (rt.db) dIn[rt.db].w += sw;
+      if (rt.queue) qIn[rt.queue] += sw; else if (rt.db) dIn[rt.db].w += sw;
     });
+
+    // Queues: writes are accepted at once and wait in the backlog; workers drain it at a fixed rate.
+    let backlog = 0;
+    queues.forEach((q) => {
+      const rate = q.workers * q.workerRate;
+      let b = qq[q.id] + qIn[q.id];
+      const drained = Math.min(b, rate);
+      b -= drained;
+      let drop = 0;
+      if (b > q.queueLimit) { drop = b - q.queueLimit; b = q.queueLimit; }
+      qq[q.id] = b;
+      if (queueDb[q.id]) dIn[queueDb[q.id]].w += drained;
+      rec.dropped += drop;
+      rec.queue += b;
+      backlog += b;
+      rec.blocks[q.id] = {
+        load: qIn[q.id], capacity: rate, ratio: rate > 0 ? qIn[q.id] / rate : Infinity, served: drained, drained,
+        queue: b, queueLimit: q.queueLimit, dropped: drop, latencyMs: BASE_MS.queue, waitMs: rate > 0 ? (b / rate) * 1000 : Infinity
+      };
+    });
+    peakBacklog = Math.max(peakBacklog, backlog);
 
     // Caches.
     const hitRate = {};
@@ -248,7 +280,8 @@ function simulate(d, sc) {
       } else {
         paths.push([o.sr, base + (rt.db ? dbLat[rt.db].r : 0)]);
       }
-      paths.push([o.sw, base + (rt.db ? dbLat[rt.db].w : 0)]);
+      // A queued write is answered as soon as the queue accepts it; the work happens later.
+      paths.push([o.sw, base + (rt.queue ? BASE_MS.queue : rt.db ? dbLat[rt.db].w : 0)]);
       paths.forEach(([n, L]) => {
         if (n <= 1e-9) return;
         done += n;
@@ -260,6 +293,14 @@ function simulate(d, sc) {
     totDrop += rec.dropped; totSlow += slow; totDone += done;
 
     // Saturation, dropping and recovery events, per block.
+    // A queue building a backlog is doing its job, so it logs `backlog` and `drained`, not `saturated`.
+    queues.forEach((q) => {
+      const r = rec.blocks[q.id];
+      if (r.queue > 0.5 && !satActive[q.id]) { satActive[q.id] = true; events.push({ t, type: 'backlog', block: q.id, load: r.load, capacity: r.capacity }); }
+      else if (r.queue <= 0.5 && satActive[q.id]) { satActive[q.id] = false; events.push({ t, type: 'drained', block: q.id }); }
+      if (r.dropped > 0 && !dropActive[q.id]) { dropActive[q.id] = true; events.push({ t, type: 'dropping', block: q.id, limit: q.queueLimit }); }
+      else if (r.dropped === 0 && dropActive[q.id]) dropActive[q.id] = false;
+    });
     [...servers, ...dbs].forEach((b) => {
       const r = rec.blocks[b.id];
       if (r.queue > 0.5 && !satActive[b.id]) {
@@ -295,11 +336,11 @@ function simulate(d, sc) {
     slow: slowShare <= sc.targets.slowShare,
     cost: costPerHour <= sc.targets.cost + 1e-9
   };
-  const first = events.find((e) => e.type === 'saturated' || e.type === 'down');
+  const first = events.find((e) => e.type === 'saturated' || e.type === 'down' || (e.type === 'dropping' && byId[e.block] && byId[e.block].type === 'queue'));
   const firstFailure = first ? { block: first.block, t: first.t, load: first.load } : null;
 
   // Numbers the levels ask learners to predict.
-  const metrics = { recoverySeconds: null, peakErrorRate: 0, dbReadLoadAfterFlush: null };
+  const metrics = { recoverySeconds: null, peakErrorRate: 0, dbReadLoadAfterFlush: null, peakBacklog };
   if (sc.spike) {
     const end = sc.spike.t + sc.spike.dur;
     if (ticks[end - 1].queue <= 0.5) metrics.recoverySeconds = 0;
@@ -311,7 +352,7 @@ function simulate(d, sc) {
   }
   metrics.peakErrorRate = Math.max(...ticks.map((r) => {
     const e = r.traffic.reads + r.traffic.writes;
-    return e > 0 ? (r.dropped / e) * 100 : 0;
+    return e > 0 ? Math.min(1, r.dropped / e) * 100 : 0; // drops of earlier backlog can exceed this second's arrivals
   }));
   if (sc.cacheFlush) {
     const r = ticks[sc.cacheFlush.t];
