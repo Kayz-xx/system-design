@@ -38,8 +38,9 @@ function wireFlow(d, tick, a, b) {
   if (a === 'traffic') return tick.traffic.reads + tick.traffic.writes;
   if (typeOf(d, b) === 'database') {
     if (typeOf(d, a) === 'cache') return tick.blocks[a].misses;
-    const miss = d.wires.filter(([x, y]) => y === b && typeOf(d, x) === 'cache').reduce((s, [x]) => s + tick.blocks[x].misses, 0);
-    return Math.max(0, rb.load - miss);
+    if (typeOf(d, a) === 'queue') return tick.blocks[a].drained;
+    const into = (type, key) => d.wires.filter(([x, y]) => y === b && typeOf(d, x) === type).reduce((s, [x]) => s + tick.blocks[x][key], 0);
+    return Math.max(0, rb.load - into('cache', 'misses') - into('queue', 'drained'));
   }
   return rb.load;
 }

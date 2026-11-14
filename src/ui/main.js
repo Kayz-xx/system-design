@@ -21,8 +21,7 @@ function renderPalette() {
   const costOf = (type) => Wd.cost(blockCost(Object.assign({ type, copies: 1 }, DEFAULTS[type])));
   const row = (type) => `<button class="pal-btn" data-add="${type}">${icon(w, type)}<span class="t">${esc(Wd.palette[type])}<small>${costOf(type)}</small></span></button>`;
   document.getElementById('pal').innerHTML = `<div class="label">${w === 'cafe' ? 'Hire and buy' : 'Blocks'}</div>
-    ${row('server')}${row('loadBalancer')}${row('cache')}${row('database')}
-    <button class="pal-btn" disabled title="Level 4, on the roadmap">${icon(w, 'loadBalancer')}<span class="t">${esc(Wd.palette.queue)}<small>Level 4</small></span></button>
+    ${row('server')}${row('loadBalancer')}${row('cache')}${row('database')}${row('queue')}
     <p class="pal-note">Click to add. Drag from a block’s right dot to connect it. Only connections that make sense will snap.</p>`;
 }
 

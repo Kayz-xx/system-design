@@ -48,6 +48,11 @@ export function narrate(log, d, sc) {
       s = cafe ? `The line at ${nm(e.block)} reaches ${fmtN(e.limit / SCALE)} people. New customers walk out.`
         : `${nm(e.block)}’s queue hits its limit of ${fmtN(e.limit)}. New requests are dropped.`;
     }
+    if (e.type === 'backlog') {
+      s = cafe ? `Orders arrive faster than the baristas pull tickets. Tickets start to pile up on ${nm(e.block)}, but nobody is turned away.`
+        : `${nm(e.block)} accepts every write and builds a backlog. Its workers keep draining it at ${Wd.rate(e.capacity)}.`;
+    }
+    if (e.type === 'drained') s = cafe ? `The last ticket comes off ${nm(e.block)}.` : `${nm(e.block)}’s backlog is empty.`;
     if (e.type === 'recovered') s = cafe ? `The line at ${nm(e.block)} is gone.` : `${nm(e.block)}’s queue is empty.`;
     if (s) out.push({ t: e.t, s });
   });
@@ -85,7 +90,8 @@ function inspectorHtml() {
   }
   const b = d.blocks.find((x) => x.id === S.sel.id); if (!b) return '';
   let f = `<div class="field"><label for="f-name">Name</label><input id="f-name" data-field="name" value="${esc(b.names[w])}"></div>`;
-  const fields = (FIELDS[b.type] || []).filter((x) => x[w]);
+  const sc = scene().scenario, writes = sc.base.writes > 0 || !!(sc.spike && sc.spike.writes > 0);
+  const fields = (FIELDS[b.type] || []).filter((x) => x[w] && (!x.writesOnly || writes));
   if (fields.length) {
     f += `<div class="field-row">` + fields.map((x) => {
       const s = x.scaled ? Wd.scale : 1;
@@ -95,6 +101,9 @@ function inspectorHtml() {
   if (b.type === 'cache') {
     f += `<div class="field"><label for="f-size">${w === 'cafe' ? 'Fridge size' : 'Size'}</label><select id="f-size" data-field="size">${Object.keys(CACHE_SIZES)
       .map((k) => `<option value="${k}" ${b.size === k ? 'selected' : ''}>${esc(Wd.cacheLabel[k])} · ${Wd.cost(CACHE_SIZES[k].cost)}</option>`).join('')}</select></div>`;
+  }
+  if (b.type === 'queue') {
+    f += `<p class="muted">${w === 'cafe' ? 'Orders go on the rail at once. Baristas take tickets to the espresso machine at their own pace.' : 'Writes are accepted at once. Workers send them to the database at a steady rate.'}</p>`;
   }
   if (b.type === 'loadBalancer') {
     f += `<p class="muted">${w === 'cafe' ? 'One line for everyone. Each customer goes to the next free barista.' : 'Spreads requests across the servers behind it, in proportion to their capacity.'}</p>`;
@@ -149,7 +158,7 @@ export function renderSide() {
     let next = '';
     if (log.result.passed && w === 'cafe') next = `<button class="btn primary" id="to-software">See it as software →</button>`;
     else if (log.result.passed && lv.n < LEVELS.length) next = `<button class="btn primary" data-level="l${lv.n + 1}">Next: Level ${lv.n + 1}</button>`;
-    else if (log.result.passed) next = `<span class="muted">All three levels done. The chaos agent is next on the roadmap.</span>`;
+    else if (log.result.passed) next = `<span class="muted">All ${LEVELS.length} levels done.</span>`;
     const carry = w === 'software' && atts.length === 1 ? (last.err <= 0.15 ? ' · ★ the coffee shop carried over' : ' · the coffee shop had the same answer') : '';
     html += `<section class="panel" aria-label="Result">
         <div class="verdict"><span class="badge ${log.result.passed ? 'pass' : 'fail'}">${log.result.passed ? (w === 'cafe' ? 'The shop held up' : 'Passed') : (w === 'cafe' ? 'The shop broke' : 'Failed')}</span><span class="muted">try ${atts.length}</span></div>

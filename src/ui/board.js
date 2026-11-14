@@ -10,6 +10,7 @@ function nodeState(b, r) {
   const cafe = world() === 'cafe';
   if (b.type === 'server' && r.alive === 0) return { cls: 's-down', chip: `<span class="chip crit">${cafe ? 'Nobody' : 'Down'}</span>` };
   if (r.dropped > 0) return { cls: 's-crit', chip: `<span class="chip crit">${cafe ? 'Walk-outs' : 'Dropping'}</span>` };
+  if (b.type === 'queue') return r.queue > 0.5 ? { cls: 's-warm', chip: `<span class="chip warn">${cafe ? 'Tickets' : 'Backlog'}</span>` } : { cls: '', chip: '<span class="chip ok">OK</span>' };
   if (r.queue > 0.5) return { cls: 's-hot', chip: `<span class="chip crit">${cafe ? 'Line' : 'Queueing'}</span>` };
   if (b.type === 'cache' && r.hitRate < 0.5) return { cls: 's-warm', chip: `<span class="chip warn">${cafe ? 'Empty' : 'Cold'}</span>` };
   if (r.ratio >= 0.8) return { cls: 's-warm', chip: '<span class="chip warn">Busy</span>' };
@@ -28,17 +29,31 @@ function nodeSub(b, r) {
     case 'cache':
       if (r) return cafe ? `${Math.round(r.hitRate * 100)}% grab one` : `hit rate ${Math.round(r.hitRate * 100)}%`;
       return Wd.cacheLabel[b.size] || CACHE_SIZES[b.size].label;
-    case 'database':
-      if (r) return cafe ? `${fmt1(sc(r.readLoad))}/min in · ${fmtN(sc(r.queue))} waiting` : `${fmtN(r.readLoad)} reads/s · q ${fmtN(r.queue)}`;
-      return cafe
-        ? `${fmt1(sc(b.readCapacity))} drinks/min${b.replicas ? ` × ${1 + b.replicas}` : ''}`
-        : `R ${fmtN(b.readCapacity)}${b.replicas ? '×' + (1 + b.replicas) : ''} · W ${fmtN(b.writeCapacity)}`;
+    case 'database': {
+      const writes = writesHere();
+      if (r) {
+        if (cafe) return `${fmt1(sc(writes ? r.load : r.readLoad))}/min in · ${fmtN(sc(r.queue))} waiting`;
+        return writes && r.readLoad < 0.5 ? `${fmtN(r.writeLoad)} writes/s · q ${fmtN(r.queue)}` : `${fmtN(r.readLoad)} reads/s · q ${fmtN(r.queue)}`;
+      }
+      if (cafe) return writes ? `${fmt1(sc(b.writeCapacity))} order drinks/min` : `${fmt1(sc(b.readCapacity))} drinks/min${b.replicas ? ` × ${1 + b.replicas}` : ''}`;
+      return `R ${fmtN(b.readCapacity)}${b.replicas ? '×' + (1 + b.replicas) : ''} · W ${fmtN(b.writeCapacity)}`;
+    }
+    case 'queue':
+      if (r) return cafe ? `${fmtN(sc(r.queue))} tickets · ${fmt1(sc(r.drained))}/min out` : `backlog ${fmtN(r.queue)} · ${fmtN(r.drained)}/s out`;
+      return cafe ? `${b.workers} × ${fmt1(sc(b.workerRate))} drinks/min` : `${b.workers} workers × ${fmtN(b.workerRate)}/s`;
     default: return '';
   }
 }
 
+// Whether this scene sends writes (orders), so the espresso machine shows its order rate.
+function writesHere() {
+  const sc = scene().scenario;
+  return sc.base.writes > 0 || !!(sc.spike && sc.spike.writes > 0);
+}
+
 function meterPct(b, r) {
   if (!r || b.type === 'loadBalancer') return 0;
+  if (b.type === 'queue') return b.queueLimit > 0 ? Math.min(100, (r.queue / b.queueLimit) * 100) : 0;
   if (b.type === 'cache') return r.hitRate * 100;
   if (r.queue > 0.5) return 100;
   return Math.min(100, (isFinite(r.ratio) ? r.ratio : 1) * 100);

@@ -145,6 +145,53 @@ const LEVELS = [
         }
       }
     }
+  },
+  {
+    id: 'l4', n: 4, name: 'Mobile orders', concept: 'Asynchronism',
+    reading: { label: 'Asynchronism', url: PRIMER + '#asynchronism' },
+    translate: [
+      ['Ticket rail', 'Message queue'], ['Baristas pulling tickets', 'Workers'], ['An app order', 'A write'], ['Order refused', 'Dropped write']
+    ],
+    design: {
+      traffic: { x: 30, y: 150 },
+      blocks: [
+        { id: 's1', type: 'server', names: { cafe: 'Order taker', software: 'App server' }, capacity: 300, copies: 1, queueLimit: 2000, x: 250, y: 150 },
+        { id: 'db1', type: 'database', names: { cafe: 'Espresso machine', software: 'Database' }, readCapacity: 100, writeCapacity: 100, replicas: 0, queueLimit: 200, x: 690, y: 150 }
+      ],
+      wires: [['traffic', 's1'], ['s1', 'db1']]
+    },
+    scenes: {
+      cafe: {
+        title: 'The free-drink promo',
+        brief: 'The shop takes orders on its app. The espresso machine makes 2 drinks a minute, and normally 1.2 app orders come in each minute. At 8:00 a free-drink promo goes out, and for 20 minutes 5 orders arrive every minute. Each order goes straight to the machine, and the app refuses new orders when 4 are already waiting.',
+        goal: 'Refuse fewer than 1% of orders and keep waits under 5 minutes, for $120 an hour or less.',
+        predict: { key: 'peakErrorRate', scale: 1, question: 'In the worst minute of the promo, what share of app orders get refused?', unit: '%' },
+        hints: [
+          'During the promo, 5 orders arrive each minute and the machine makes 2. Once 4 are waiting, where do the other 3 go?',
+          'Nobody needs their drink the second they tap order. Taking the order now and making it a little later smooths a burst into a steady flow. In software this is a queue.',
+          'Look between the order taker and the espresso machine. A ticket rail holds the orders, and baristas pull tickets no faster than the machine can make drinks.'
+        ],
+        scenario: {
+          duration: 150, base: { reads: 0, writes: 60 }, spike: { t: 30, dur: 20, reads: 0, writes: 250 },
+          latencyTargetMs: 5000, targets: { errorRate: 0.01, slowShare: 0.05, cost: 0.6 }
+        }
+      },
+      software: {
+        title: 'A sign-up burst',
+        brief: 'Every sign-up is a write. The database handles 100 writes a second, and normal traffic is 60 a second. At 0:30 a launch post sends 250 sign-ups a second for 20 seconds. Writes go straight to the database, which holds at most 200 waiting.',
+        goal: 'Keep errors under 1% and slow requests under 5%, for $0.60 an hour or less.',
+        predict: { key: 'peakErrorRate', scale: 1, question: 'At the worst second of the burst, what share of writes fail?', unit: '%' },
+        hints: [
+          'This is the promo again. How many writes a second arrive, and how many can the database take?',
+          'Asynchronism: accept the write now and do the work later. A queue absorbs the burst, and workers drain it at a pace the database can take.',
+          'Look between App server and Database: a queue whose workers together write 100 a second.'
+        ],
+        scenario: {
+          duration: 150, base: { reads: 0, writes: 60 }, spike: { t: 30, dur: 20, reads: 0, writes: 250 },
+          latencyTargetMs: 300, targets: { errorRate: 0.01, slowShare: 0.05, cost: 0.6 }
+        }
+      }
+    }
   }
 ];
 

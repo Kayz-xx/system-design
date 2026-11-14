@@ -48,6 +48,25 @@ test('software L3: one replica is not enough', () => {
   assert.equal(run(level('l3'), 'software', (d) => { d.blocks[2].replicas = 1; }).result.passed, false);
 });
 
+for (const scene of ['cafe', 'software']) {
+  test(`${scene} L4: 60% of writes lost at the peak; a queue with 2 workers passes, nothing cheaper does`, () => {
+    const L = level('l4');
+    const a = run(L, scene);
+    assert.ok(Math.abs(a.metrics.peakErrorRate - 60) < 0.01, String(a.metrics.peakErrorRate));
+    assert.equal(a.result.firstFailure.block, 'db1');
+    assert.equal(a.result.passed, false);
+    const withQueue = (d) => {
+      d.blocks.push({ id: 'q1', type: 'queue', names: { cafe: 'Ticket rail', software: 'Queue' }, name: 'Queue', workers: 2, workerRate: 50, queueLimit: 5000 });
+      d.wires.push(['s1', 'q1'], ['q1', 'db1']);
+    };
+    const b = run(L, scene, withQueue);
+    assert.equal(b.result.passed, true, JSON.stringify(b.result));
+    assert.equal(b.metrics.peakBacklog, 3000);
+    assert.equal(run(L, scene, (d) => { d.blocks[1].writeCapacity = 300; }).result.passed, false, 'a bigger database is over budget');
+    assert.equal(run(L, scene, (d) => { d.blocks[1].queueLimit = 5000; }).result.passed, false, 'a longer database queue is too slow');
+  });
+}
+
 test('deterministic: same input, same log', () => {
   assert.deepEqual(run(level('l3'), 'software'), run(level('l3'), 'software'));
 });

@@ -5,12 +5,13 @@
 import { canWire, simulate } from '../sim/sim.js';
 import { LEVELS, SCALE } from '../levels/levels.js';
 
-const TYPES = ['server', 'loadBalancer', 'cache', 'database'];
+const TYPES = ['server', 'loadBalancer', 'cache', 'database', 'queue'];
 const NUM_FIELDS = {
   server: { capacity: [1, 100000], copies: [1, 50], queueLimit: [0, 1000000] },
   loadBalancer: {},
   cache: {},
-  database: { readCapacity: [1, 100000], writeCapacity: [1, 100000], replicas: [0, 20], queueLimit: [0, 1000000] }
+  database: { readCapacity: [1, 100000], writeCapacity: [1, 100000], replicas: [0, 20], queueLimit: [0, 1000000] },
+  queue: { workers: [1, 50], workerRate: [1, 100000], queueLimit: [0, 1000000] }
 };
 const SIZES = ['small', 'medium', 'large'];
 const MAX_BLOCKS = 12;
@@ -124,6 +125,8 @@ export function runFacts(design, scenario, log, world) {
       s = `${name(e.block)} gets ${w.rate(e.load)}${side} but handles ${w.rate(e.capacity)}, so ${w.rate(e.load - e.capacity)} ${w.cafe ? 'join the line' : 'start to queue'}.`;
     }
     if (e.type === 'dropping') s = w.cafe ? `The line at ${name(e.block)} reaches ${w.count(e.limit)}, so new customers walk out.` : `The queue at ${name(e.block)} reaches its limit of ${w.count(e.limit)}, so new requests are dropped.`;
+    if (e.type === 'backlog') s = w.cafe ? `Tickets start to pile up on ${name(e.block)}, but every order is taken.` : `${name(e.block)} builds a backlog while its workers drain ${w.rate(e.capacity)}.`;
+    if (e.type === 'drained') s = w.cafe ? `The last ticket comes off ${name(e.block)}.` : `${name(e.block)}’s backlog is empty.`;
     if (e.type === 'recovered') s = w.cafe ? `The line at ${name(e.block)} is gone.` : `The queue at ${name(e.block)} is empty again.`;
     if (s) lines.push({ t: e.t, at: w.clock(e.t), text: s, block: e.block || null });
   }
