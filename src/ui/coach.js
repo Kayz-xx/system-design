@@ -1,6 +1,8 @@
 // The coach column: scene steps, brief, inspector, prediction, result and tutor.
-// The tutor here is template-based and reads only the run log. The OpenAI tutor (src/ai) must keep the same rule.
+// Hints come from the OpenAI tutor (src/ai/tutor.js) when it answers, and from the level's template hints otherwise.
+// Either way the tutor reads only the run log.
 import { CACHE_SIZES, blockCost } from '../sim/sim.js';
+import { askTutor, tutorRequest } from '../ai/tutor.js';
 import { SCALE, LEVELS } from '../levels/levels.js';
 import { S, L, W, world, key, scene, design, run, attempts, nameOf, stars, esc, fmtN, fmt1, fmtPct } from './state.js';
 import { FIELDS } from './worlds.js';
@@ -50,6 +52,28 @@ export function narrate(log, d, sc) {
     if (s) out.push({ t: e.t, s });
   });
   return out.slice(0, 7);
+}
+
+// Tutor replies per run and hint step: key -> { loading } or { text, source }. A new run gets fresh hints.
+const tutorCache = {};
+const tutorKey = (step) => `${key()}#${attempts().length}#${step}`;
+
+function hintFor(step, log, d, sc, last) {
+  const k = tutorKey(step), have = tutorCache[k];
+  if (have) return have;
+  const fallback = scene().hints[step - 1];
+  tutorCache[k] = { loading: true, text: fallback };
+  const body = tutorRequest({
+    world: world(), level: S.level, design: d, scenario: sc, log, hintStep: step,
+    prediction: last ? { block: last.guessBlock, value: last.guess, actual: last.actual } : null
+  });
+  askTutor(body, { fallback }).then((out) => {
+    tutorCache[k] = out;
+    // Redraw only if the learner is still on this run, and not while they are typing in the column.
+    const typing = document.activeElement && document.activeElement.closest && document.activeElement.closest('#side input, #side select');
+    if (tutorKey(step) === k && !typing) renderSide();
+  });
+  return tutorCache[k];
 }
 
 function inspectorHtml() {
@@ -142,9 +166,13 @@ export function renderSide() {
     html += `<section class="panel" aria-label="Tutor">
         <div class="label">What happened · from the run log</div>
         <ol class="log">${narrate(log, d, sc).map((l) => `<li><time>${Wd.clock(l.t)}</time><span>${l.s}</span></li>`).join('')}</ol>
-        ${!log.result.passed ? `${sn.hints.slice(0, step).map((h, i) => `<div class="hint"><b>${labels[i]}</b>${esc(h)}</div>`).join('')}
+        ${!log.result.passed ? `${sn.hints.slice(0, step).map((h, i) => {
+          const t = hintFor(i + 1, log, d, sc, last);
+          if (t.loading) return `<div class="hint" aria-busy="true"><b>${labels[i]}</b><span class="muted">${w === 'cafe' ? 'The tutor is reading the morning…' : 'The tutor is reading the run log…'}</span></div>`;
+          return `<div class="hint"><b>${labels[i]}${t.source === 'ai' ? ' · tutor' : ''}</b>${esc(t.text)}</div>`;
+        }).join('')}
           <div class="btn-row">${step < 3 ? `<button class="btn small" id="hint-btn">${step ? 'Next hint' : 'Give me a hint'} (${step + 1} of 3)</button>` : '<span class="muted">No more hints. The tutor never hands over the answer.</span>'}</div>` : ''}
-        <p class="muted" style="font-size:12px">Template hints for now. The OpenAI tutor will send the same log and keep these as the fallback.</p>
+        <p class="muted" style="font-size:12px">The tutor sees only this run's log, and never gives the finished design.</p>
       </section>`;
   }
   document.getElementById('side').innerHTML = html;
