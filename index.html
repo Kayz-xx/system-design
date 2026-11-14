@@ -3,34 +3,61 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>System Design Sandbox</title>
-<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="A little coffee shop for big system-design ideas. Build, predict, and watch your café come to life.">
+<title>Little Systems Café · System Design Sandbox</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="styles/app.css">
 </head>
 <body>
+<a class="skip-link" href="#main">Skip to the workbench</a>
 <header class="top">
-  <div class="brand"><b>System Design Sandbox</b><span>Learn to see the system inside a business. Start with a coffee shop.</span></div>
-  <nav class="tabs" id="tabs" aria-label="Levels"></nav>
+  <a class="brand" href="./" aria-label="Little Systems Café home">
+    <span class="brand-mark" aria-hidden="true">☕</span>
+    <span><b>Little Systems <em>Café</em></b><small>A system design sandbox</small></span>
+  </a>
+  <div class="top-note"><span class="status-dot" aria-hidden="true"></span> A little practice. A lot of possibility.</div>
+  <div class="progress-pill" id="progress" aria-live="polite" title="Each chapter: pass the café, pass the software, and make your first software prediction within 15%.">0 stars</div>
 </header>
+<section class="welcome" aria-labelledby="welcome-title">
+  <div><p class="eyebrow">Make yourself a little wiser</p><h1 id="welcome-title">Small café. <em>Big ideas.</em></h1>
+  <p class="welcome-copy">Build a coffee shop that can handle the rush.<br>Then discover the software system hiding inside it.</p></div>
+  <div class="recipe"><span class="label">Your recipe for learning</span><ol><li><span>01</span> Build your shop</li><li><span>02</span> Make a prediction</li><li><span>03</span> Watch &amp; improve</li></ol></div>
+</section>
+<nav class="tabs" id="tabs" aria-label="Choose a chapter"></nav>
 <div class="app" id="app">
-  <aside class="pal" id="pal" aria-label="Blocks"></aside>
-  <main class="main" id="main">
+  <main class="main" id="main" tabindex="-1">
+    <div class="workbench-title"><div><span class="eyebrow">The workbench</span><h2>Your little corner of the world</h2></div><span class="desk-note">Arrange. Connect. Experiment.</span></div>
+    <aside class="pal" id="pal" aria-label="Shop equipment"></aside>
+    <div class="edit-tools" role="group" aria-label="Design history">
+      <div class="btn-row">
+        <button class="btn small" id="undo-design" disabled title="Undo design edit (Ctrl or Command + Z)">↶ Undo</button>
+        <button class="btn small" id="redo-design" disabled title="Redo design edit (Ctrl or Command + Shift + Z)">↷ Redo</button>
+      </div>
+      <button class="btn small" id="reset-design" title="Restore this scene’s starting design. You can undo this.">Reset shop</button>
+    </div>
+    <a class="btn small jump-predict" href="#prediction">Make a prediction ↓</a>
+    <details class="connection-tools" id="connection-tools">
+      <summary>Connect &amp; manage equipment <span>Keyboard friendly</span></summary>
+      <div id="connection-body"></div>
+    </details>
     <div class="canvas-wrap" id="canvas-wrap">
-      <div class="canvas-head"><span class="world" id="world-name"></span><span>Cost <span class="cost" id="cost"></span> <span class="muted" id="budget"></span></span></div>
-      <div class="stage" id="stage">
-        <svg class="wires" id="wires" aria-hidden="true"></svg>
-        <canvas class="fx" id="fx" width="900" height="400" aria-hidden="true"></canvas>
-        <div class="nodes" id="nodes"></div>
+      <div class="canvas-head"><span class="world" id="world-name"></span><span>Running cost <span class="cost" id="cost"></span> <span class="muted" id="budget"></span></span></div>
+      <div class="board-scroll" tabindex="0" role="region" aria-label="Shop floor. Scroll horizontally to explore the whole board.">
+        <div class="stage" id="stage">
+          <svg class="wires" id="wires" aria-hidden="true"></svg>
+          <canvas class="fx" id="fx" width="900" height="400" aria-hidden="true"></canvas>
+          <div class="nodes" id="nodes"></div>
+        </div>
       </div>
       <div id="overlay"></div>
+      <div class="board-key"><span><i class="key-dot"></i> Customers follow the connections</span><span>Select equipment to adjust it ↗</span></div>
     </div>
     <section class="run" id="run" aria-label="Run"></section>
   </main>
-  <aside class="side" id="side" aria-label="Level"></aside>
+  <aside class="side" id="side" aria-label="Chapter brief, predictions and results"></aside>
 </div>
-<p class="foot">The simulator counts customers per minute and requests per second. It teaches intuition, not capacity planning: real systems slow down before they saturate, and this one does not. Readings link to the <a href="https://github.com/donnemartin/system-design-primer" target="_blank" rel="noopener">System Design Primer</a> by Donne Martin, CC BY 4.0.</p>
+<footer class="foot"><b>Made for curious minds.</b><p>The simulator teaches intuition, not capacity planning: real systems slow down before they saturate. One café minute becomes one software second.</p><span>Inspired by the <a href="https://github.com/donnemartin/system-design-primer" target="_blank" rel="noopener">System Design Primer</a> by Donne Martin · CC BY 4.0</span></footer>
 <script type="module" src="src/ui/main.js"></script>
 </body>
 </html>

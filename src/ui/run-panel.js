@@ -43,7 +43,8 @@ function chartSvg(o, width) {
   } else if (end < N - 1) {
     s += `<line class="playhead" x1="${x(end)}" x2="${x(end)}" y1="${m.t}" y2="${m.t + ih}"/>`;
   }
-  return `<svg viewBox="0 0 ${Wp} ${H}" data-n="${N}" data-l="${m.l}" data-iw="${iw}" data-w="${Wp}" role="img" aria-label="${esc(o.title)}">${s}</svg>`;
+  const unbounded = o.vals.some((v) => !Number.isFinite(v));
+  return `<svg viewBox="0 0 ${Wp} ${H}" data-n="${N}" data-l="${m.l}" data-iw="${iw}" data-w="${Wp}" role="img" aria-label="${esc(o.title)}">${unbounded ? '<desc>Unbounded waits are drawn at the chart ceiling. The readout shows infinity.</desc>' : ''}${s}</svg>`;
 }
 
 export function renderRun() {
@@ -58,6 +59,7 @@ export function renderRun() {
   const res = r.log.result, done = r.done;
   const check = (ok, label, val, tgt) => `<span class="check ${done ? (ok ? 'ok' : 'bad') : ''}"><span class="mark">${done ? (ok ? '✓' : '✗') : '·'}</span>${label} <span class="mono">${done ? val : '…'}</span> <span class="muted mono">≤ ${tgt}</span></span>`;
   el.innerHTML = `<div class="run-head">
+      <span class="label">${r.stale ? 'Previous run' : 'Run results'}</span>
       <div class="checks">
         ${check(res.checks.errors, Wd.checks.errors, fmtPct(res.errorRate), fmtPct(sc.targets.errorRate))}
         ${check(res.checks.slow, Wd.checks.slow(sc.latencyTargetMs), fmtPct(res.slowShare), fmtPct(sc.targets.slowShare))}
@@ -70,6 +72,7 @@ export function renderRun() {
         <button class="btn small" id="replay" ${done ? '' : 'disabled'}>Replay</button>
       </div>
     </div>
+    ${r.stale ? '<p class="hint" role="status">Your design has changed. These charts show the previous run. Make a new prediction to test your edits.</p>' : ''}
     <div class="readout" id="readout"></div>
     <div class="charts">
       <div class="chart" data-chart="traffic"><h4>${Wd.charts.traffic}</h4><div class="plot"></div></div>
@@ -95,9 +98,11 @@ export function renderRunBody() {
   document.getElementById('readout').textContent = world() === 'cafe'
     ? `${Wd.clock(rt)} · ${fmt1(cv.traffic(rk.traffic.reads + rk.traffic.writes))} customers/min · longest wait ${fmt1(cv.latency(rk.latencyMs))} min · ${fmt1(cv.errors(rk.dropped))} walking out/min`
     : `${Wd.clock(rt)} · traffic ${fmtN(rk.traffic.reads + rk.traffic.writes)}/s · slowest path ${fmtN(rk.latencyMs)} ms · dropped ${fmtN(rk.dropped)}/s`;
+  const latencies = ticks.map((x) => cv.latency(x.latencyMs));
+  const latencyCeiling = Math.max(cv.latency(sc.latencyTargetMs), 1, ...latencies.filter(Number.isFinite));
   const series = {
     traffic: { vals: ticks.map((x) => cv.traffic(x.traffic.reads + x.traffic.writes)), title: Wd.charts.traffic },
-    latency: { vals: ticks.map((x) => cv.latency(x.latencyMs)), target: cv.latency(sc.latencyTargetMs), clampMax: cv.latency(10000), title: Wd.charts.latency },
+    latency: { vals: latencies, target: cv.latency(sc.latencyTargetMs), clampMax: latencyCeiling, title: Wd.charts.latency },
     errors: { vals: ticks.map((x) => cv.errors(x.dropped)), err: true, title: Wd.charts.errors }
   };
   el.querySelectorAll('.chart').forEach((c) => {
