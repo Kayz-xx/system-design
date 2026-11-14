@@ -4,7 +4,7 @@
 import { CACHE_SIZES, blockCost } from '../sim/sim.js';
 import { askTutor, tutorRequest } from '../ai/tutor.js';
 import { SCALE, LEVELS } from '../levels/levels.js';
-import { S, L, W, world, key, scene, design, run, attempts, nameOf, stars, esc, fmtN, fmt1, fmtPct } from './state.js';
+import { S, L, W, world, key, scene, design, run, attempts, nameOf, stars, esc, fmtN, fmt1, fmtPct, runScenario, submission } from './state.js';
 import { FIELDS } from './worlds.js';
 
 export const predScale = () => scene().predict.scale || 1;
@@ -23,8 +23,8 @@ function fmtPred(v) {
 function starSummary(lv) {
   const st = stars(lv.id), first = (S.attempts[lv.id + ':software'] || [])[0];
   const descriptions = [
-    st[0] ? 'Your coffee shop met every target.' : 'Meet every target in the coffee shop.',
-    st[1] ? 'Your software system met every target.' : 'Meet every target in software.',
+    st[0] ? 'Your coffee shop passed every test.' : 'Submit a coffee shop that passes every test.',
+    st[1] ? 'Your software system passed every test.' : 'Submit a software design that passes every test.',
     st[2] ? 'Your first software guess was within 15%.' : !first
       ? 'Get your first software guess within 15%.' : Number.isFinite(first.err)
         ? `Your first software guess was ${Math.round(first.err * 100)}% off. This star is decided on the first try.`
@@ -147,15 +147,18 @@ export function renderSide() {
         <span class="muted">→</span>
         <button class="step" data-scene="software" ${w === 'software' ? 'aria-current="step"' : ''}><small>Step 2 ${st[1] ? '<span class="ok">✓</span>' : ''}</small><b>Software</b></button>
       </div>
-      <div class="label">Level ${lv.n} · ${esc(lv.concept)}</div>
+      <div class="problem-meta"><span class="diff diff-${lv.difficulty.toLowerCase()}">${esc(lv.difficulty)}</span><span class="tag">${esc(lv.concept)}</span><span class="muted">Level ${lv.n}</span></div>
       <h2>${esc(sn.title)}</h2>
       <p>${esc(sn.brief)}</p>
       <p><b>${esc(sn.goal)}</b></p>
+      <div class="label">Constraints</div>
+      <ul class="constraints">${(sn.constraints || []).map((c) => `<li>${esc(c)}</li>`).join('')}</ul>
       <dl class="targets">
         <dt>${Wd.checks.errors}</dt><dd>≤ ${fmtPct(sc.targets.errorRate)}</dd>
         <dt>${w === 'cafe' ? 'Long waits' : 'Slow requests'}</dt><dd>≤ ${fmtPct(sc.targets.slowShare)} over ${Wd.latTarget(sc.latencyTargetMs)}</dd>
         <dt>Cost</dt><dd>≤ ${Wd.cost(sc.targets.cost)}</dd>
       </dl>
+      <p class="muted">${w === 'cafe' ? `Run plays the sample morning. Submit also plays ${(lv.tests || []).length} hidden mornings that stay inside these limits.` : `Run plays the sample. Submit also runs ${(lv.tests || []).length} hidden tests that stay inside these limits.`}</p>
       ${w === 'software' ? `<p class="muted">Reading: <a href="${lv.reading.url}" target="_blank" rel="noopener">${esc(lv.reading.label)}</a>${lv.reading.extra ? `, <a href="${lv.reading.extra.url}" target="_blank" rel="noopener">${esc(lv.reading.extra.label)}</a>` : ''} · System Design Primer</p>` : ''}
     </section>`;
   if (w === 'software') {
@@ -167,30 +170,32 @@ export function renderSide() {
   const ready = p.block && p.value !== undefined && p.value !== '';
   const playing = r && !r.done;
   html += `<section class="panel" id="prediction" tabindex="-1" aria-label="Prediction">
-      <div class="label">Predict${atts.length ? ` · try ${atts.length + 1}` : ''}</div>
+      <div class="label">Run the sample${atts.length ? ` · try ${atts.length + 1}` : ''} · predict first</div>
       <div class="field"><label for="p-block">${w === 'cafe' ? 'Where does it go wrong first?' : 'Which block fails first?'}</label>
         <select id="p-block"><option value="">Choose one</option>${opts}<option value="none" ${p.block === 'none' ? 'selected' : ''}>${w === 'cafe' ? 'Nowhere, it’s fine' : 'Nothing fails'}</option></select></div>
       <div class="field"><label for="p-val">${esc(sn.predict.question)}</label>
         <div class="unit-in"><input id="p-val" type="number" min="0" step="any" inputmode="decimal" value="${p.value ?? ''}"><span>${esc(sn.predict.unit)}</span></div></div>
       ${(S.problems[key()] || []).length ? `<ul class="problems">${S.problems[key()].map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
-      <div class="btn-row"><button class="btn primary" id="run-btn" ${ready && !playing ? '' : 'disabled'}>${playing ? (w === 'cafe' ? 'Open…' : 'Running…') : (w === 'cafe' ? 'Open the doors' : 'Run simulation')}</button>
+      <div class="btn-row"><button class="btn primary" id="run-btn" ${ready && !playing ? '' : 'disabled'}>${playing ? (w === 'cafe' ? 'Open…' : 'Running…') : (w === 'cafe' ? 'Open for the sample morning' : 'Run the sample')}</button>
       <span class="muted" id="ready-note">${ready ? '' : 'Commit to a guess first.'}</span></div>
     </section>`;
+  html += submitHtml(lv, w, playing);
 
-  if (done && last) {
+  const sub = submission();
+  if (sub && !sub.stale) html += submissionHtml(lv, w, sub);
+  if (done && r.kind === 'test') {
+    html += `<section class="panel" aria-label="Tutor">
+        <div class="label">What happened · ${esc(r.label)}</div>
+        <ol class="log">${narrate(r.log, d, runScenario()).map((l) => `<li><time>${Wd.clock(l.t)}</time><span>${l.s}</span></li>`).join('')}</ol>
+      </section>`;
+  }
+  if (done && last && r.kind !== 'test') {
     const log = r.log;
     const nb = (id) => (id === 'none' ? (w === 'cafe' ? 'nowhere' : 'nothing') : nameOf(d, id));
-    let next = '';
-    if (log.result.passed && w === 'cafe') next = `<button class="btn primary" id="to-software">See it as software →</button>`;
-    else if (log.result.passed) {
-      const unfinished = nextChapter();
-      next = !unfinished ? `<span class="right">All ${LEVELS.length} chapters complete. You have practised ${esc(LEVELS.map((l) => l.concept.toLowerCase()).join(', '))}.</span>`
-        : unfinished.id === lv.id ? '<button class="btn primary" data-scene="cafe">Finish the coffee shop →</button>'
-          : `<button class="btn primary" data-level="${unfinished.id}">Continue: ${esc(unfinished.name)} →</button>`;
-    }
+    const next = log.result.passed ? `<span class="muted">${w === 'cafe' ? 'The sample morning held up. Submit to face the hidden mornings.' : 'The sample passed. Submit to run the hidden tests.'}</span>` : '';
     const carry = w === 'software' && st[0] && atts.length === 1 && Number.isFinite(last.err) && last.err <= 0.15 ? ' · ★ your café intuition carried over' : '';
     html += `<section class="panel" aria-label="Result">
-        <div class="verdict"><span class="badge ${log.result.passed ? 'pass' : 'fail'}">${log.result.passed ? (w === 'cafe' ? 'The shop held up' : 'Passed') : (w === 'cafe' ? 'The shop broke' : 'Failed')}</span><span class="muted">try ${atts.length}</span></div>
+        <div class="verdict"><span class="badge ${log.result.passed ? 'pass' : 'fail'}">${log.result.passed ? (w === 'cafe' ? 'Sample morning held up' : 'Sample passed') : (w === 'cafe' ? 'Sample morning broke' : 'Sample failed')}</span><span class="muted">try ${atts.length}</span></div>
         <div class="compare">
           <span class="k">Went wrong first: you said <b>${esc(nb(last.guessBlock))}</b></span>
           <span class="v ${last.blockRight ? 'right' : 'wrong'}">${last.blockRight ? '✓' : '✗ ' + esc(nb(last.actualBlock))}</span>
@@ -202,11 +207,10 @@ export function renderSide() {
           : '<p class="hint">The line did not clear before this run ended. There is no exact recovery time to score. Try adding headroom, then predict again.</p>'}
         ${next ? `<div class="btn-row">${next}</div>` : ''}
       </section>`;
-    html += starSummary(lv);
     const step = S.hint[key()] || 0, labels = ['Question', 'Idea', 'Where to look'];
     html += `<section class="panel" aria-label="Tutor">
         <div class="label">What happened · from the run log</div>
-        <ol class="log">${narrate(log, d, sc).map((l) => `<li><time>${Wd.clock(l.t)}</time><span>${l.s}</span></li>`).join('')}</ol>
+        <ol class="log">${narrate(log, d, runScenario()).map((l) => `<li><time>${Wd.clock(l.t)}</time><span>${l.s}</span></li>`).join('')}</ol>
         ${!log.result.passed ? `${sn.hints.slice(0, step).map((h, i) => {
           const t = hintFor(i + 1, log, d, sc, last);
           if (t.loading) return `<div class="hint" aria-busy="true"><b>${labels[i]}</b><span class="muted">${w === 'cafe' ? 'The tutor is reading the morning…' : 'The tutor is reading the run log…'}</span></div>`;
@@ -215,5 +219,48 @@ export function renderSide() {
           <div class="btn-row">${step < 3 ? `<button class="btn small" id="hint-btn">${step ? 'Next hint' : 'Give me a hint'} (${step + 1} of 3)</button>` : '<span class="muted">Try an edit, then make another prediction.</span>'}</div>` : ''}
       </section>`;
   }
+  if ((sub && !sub.stale) || (done && last)) html += starSummary(lv);
   document.getElementById('side').innerHTML = html;
+}
+
+const checkWords = (w) => (w === 'cafe'
+  ? { errors: 'customers walked out', slow: 'waits ran too long', cost: 'over budget' }
+  : { errors: 'too many errors', slow: 'too many slow requests', cost: 'over budget' });
+
+function submitHtml(lv, w, playing) {
+  const n = 1 + (lv.tests || []).length, g = S.subGuess[key()] ?? '';
+  const ready = design().blocks.length > 0 && g !== '';
+  return `<section class="panel" aria-label="Submit">
+      <div class="label">Submit</div>
+      <div class="field"><label for="p-tests">${w === 'cafe' ? `Before you submit: how many of the ${n} mornings will your shop survive?` : `Before you submit: how many of the ${n} tests will pass?`}</label>
+        <select id="p-tests"><option value="">Choose</option>${Array.from({ length: n + 1 }, (_, i) => `<option value="${i}" ${String(g) === String(i) ? 'selected' : ''}>${i} of ${n}</option>`).join('')}</select></div>
+      <div class="btn-row"><button class="btn primary" id="submit-btn" ${ready && !playing ? '' : 'disabled'}>Submit</button>
+      <span class="muted" id="submit-note">${ready ? '' : 'Guess how many tests it will pass.'}</span></div>
+    </section>`;
+}
+
+function submissionHtml(lv, w, sub) {
+  const words = checkWords(w);
+  const why = (t) => { const s = Object.entries(t.checks).filter(([, ok]) => !ok).map(([k]) => words[k]).join(', '); return s.charAt(0).toUpperCase() + s.slice(1); };
+  let next = '';
+  if (sub.accepted && w === 'cafe') next = `<button class="btn primary" id="to-software">See it as software →</button>`;
+  else if (sub.accepted) {
+    const unfinished = nextChapter();
+    next = !unfinished ? `<span class="right">All ${LEVELS.length} chapters complete. You have practised ${esc(LEVELS.map((l) => l.concept.toLowerCase()).join(', '))}.</span>`
+      : unfinished.id === lv.id ? '<button class="btn primary" data-scene="cafe">Finish the coffee shop →</button>'
+        : `<button class="btn primary" data-level="${unfinished.id}">Continue: ${esc(unfinished.name)} →</button>`;
+  }
+  const guessed = Number.isFinite(sub.guess) ? `You guessed ${sub.guess} of ${sub.total}${sub.guess === sub.passedCount ? ' · ✓ spot on' : ''}.` : '';
+  return `<section class="panel submission" aria-label="Submission">
+      <div class="verdict"><span class="badge ${sub.accepted ? 'pass' : 'fail'}">${sub.accepted ? 'Accepted' : `Failed on test ${sub.failed.n}`}</span>
+        <span class="muted">${sub.passedCount} of ${sub.total} passed</span></div>
+      ${sub.failed ? `<p><b>${esc(sub.failed.name)}.</b> ${esc(sub.failed.story)} <span class="wrong">${esc(why(sub.failed))}.</span></p>` : ''}
+      <ol class="tests">${sub.results.map((t) => `<li class="${t.passed ? 'ok' : 'bad'}">
+          <span class="mark" aria-label="${t.passed ? 'Passed' : 'Failed'}">${t.passed ? '✓' : '✗'}</span>
+          <span><b>Test ${t.n}</b> · ${esc(t.name)}${t.hidden ? '' : ` <span class="muted">(sample)</span>`}${t.passed ? '' : `<small>${esc(why(t))}</small>`}</span>
+          <button class="btn small" data-watch="${esc(t.id)}">Watch</button>
+        </li>`).join('')}</ol>
+      ${guessed ? `<p class="muted">${guessed}</p>` : ''}
+      ${next ? `<div class="btn-row">${next}</div>` : ''}
+    </section>`;
 }

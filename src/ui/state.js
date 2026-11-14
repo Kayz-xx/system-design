@@ -20,14 +20,20 @@ export const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: r
 export const playbackTick = (now, start, speed, length) =>
   Math.max(0, Math.min(length - 1, Math.floor(((now - start) / 1000) * speed)));
 
+// What the board starts with: only the pieces the learner is given.
+export const starterOf = (l) => l.starter || l.design;
+
 export const S = {
   level: 'l1',
   scene: Object.fromEntries(LEVELS.map((l) => [l.id, 'cafe'])),
-  designs: Object.fromEntries(LEVELS.map((l) => [l.id, { cafe: clone(l.design), software: clone(l.design) }])),
+  designs: Object.fromEntries(LEVELS.map((l) => [l.id, { cafe: clone(starterOf(l)), software: clone(starterOf(l)) }])),
   pred: {},      // key -> { block, value }
   runs: {},      // key -> { log, t, done, stale }
   attempts: {},  // key -> [{ guessBlock, actualBlock, blockRight, guess, actual, err, passed }]
   hint: {},      // key -> hint step shown
+  submits: {},   // key -> { results, accepted, failed, passedCount, total, guess, stale }
+  accepted: {},  // key -> true once a submission passed every test
+  subGuess: {},  // key -> how many tests the learner expects to pass
   problems: {},  // key -> validation problems
   history: {},   // key -> { undo, redo, group }; only design edits, never scores
   sel: null,     // { kind: 'block', id } | { kind: 'wire', i }
@@ -51,6 +57,9 @@ export const nameOf = (d, id) => (id === 'traffic' ? W().trafficName : ((d.block
 // The simulator reads one `name` per block; the UI stores one per world.
 export const simDesign = (d) => ({ ...d, blocks: d.blocks.map((b) => ({ ...b, name: b.names[world()] })) });
 export const tickAt = (r) => (r ? r.log.ticks[Math.min(r.t, r.log.ticks.length - 1)] : null);
+// A run may replay a hidden test, whose scenario differs from the scene's sample.
+export const runScenario = () => (run() && run().scenario) || scene().scenario;
+export const submission = () => S.submits[key()];
 
 const editHistory = () => (S.history[key()] ||= { undo: [], redo: [], group: null });
 const HISTORY_LIMIT = 50;
@@ -83,15 +92,15 @@ export function restoreDesign(direction) {
 }
 
 export function resetDesign() {
-  if (JSON.stringify(design()) === JSON.stringify(L().design)) return false;
+  if (JSON.stringify(design()) === JSON.stringify(starterOf(L()))) return false;
   rememberDesign();
-  S.designs[S.level][world()] = clone(L().design);
+  S.designs[S.level][world()] = clone(starterOf(L()));
   return true;
 }
 
-// Stars per level: coffee shop passed, software passed, first software guess within 15%.
+// Stars per level: coffee shop accepted, software accepted, first software guess within 15%.
+// Accepted means a submission passed the sample and every hidden test.
 export function stars(levelId) {
-  const a = (k) => S.attempts[levelId + ':' + k] || [];
-  const first = a('software')[0];
-  return [a('cafe').some((x) => x.passed), a('software').some((x) => x.passed), !!first && Number.isFinite(first.err) && first.err <= 0.15];
+  const first = (S.attempts[levelId + ':software'] || [])[0];
+  return [!!S.accepted[levelId + ':cafe'], !!S.accepted[levelId + ':software'], !!first && Number.isFinite(first.err) && first.err <= 0.15];
 }

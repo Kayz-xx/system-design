@@ -1,7 +1,8 @@
 // Entry point: header, palette, actions and input handling. Wires the render registry R.
 import { simulate, validate, canWire, blockCost, REFUSAL } from '../sim/sim.js';
 import { LEVELS } from '../levels/levels.js';
-import { S, R, L, W, world, key, scene, design, run, attempts, typeOf, simDesign, stars, nameOf, clone, esc, reducedMotion, rememberDesign, endDesignEdit, historyStatus, restoreDesign, resetDesign, playbackTick } from './state.js';
+import { grade } from '../levels/grade.js';
+import { S, R, L, W, world, key, scene, design, run, attempts, typeOf, simDesign, stars, nameOf, clone, esc, reducedMotion, rememberDesign, endDesignEdit, historyStatus, restoreDesign, resetDesign, playbackTick, starterOf, submission } from './state.js';
 import { WORLDS, FIELDS, DEFAULTS, CAFE_REFUSAL, cafeWords, icon } from './worlds.js';
 import { renderBoard as drawBoard, renderOverlay, NODE_W, NODE_H } from './board.js';
 import { fx, SPEED, startFx, sizeCanvas, resetFx, invalidateColors } from './fx.js';
@@ -12,8 +13,10 @@ import { renderSide, predScale, predError } from './coach.js';
 function renderTabs() {
   document.getElementById('tabs').style.setProperty('--chapter-count', LEVELS.length);
   document.getElementById('tabs').innerHTML = LEVELS.map((l) => {
-    const st = stars(l.id);
-    return `<button class="tab" ${S.level === l.id ? 'aria-current="page"' : ''} data-level="${l.id}"><span class="chapter-number">${String(l.n).padStart(2, '0')}</span><span class="chapter-copy"><b>${esc(l.name)}</b><small>${esc(l.concept)}</small></span><span class="stars" aria-label="${st.filter(Boolean).length} of 3 stars">${st.map((s) => `<span class="${s ? '' : 'off'}">★</span>`).join('')}</span></button>`;
+    const st = stars(l.id), solved = st[0] && st[1];
+    const tried = ['cafe', 'software'].some((w) => S.submits[l.id + ':' + w]);
+    const status = solved ? '<span class="solved">Solved</span>' : tried ? '<span class="tried">Attempted</span>' : '';
+    return `<button class="tab" ${S.level === l.id ? 'aria-current="page"' : ''} data-level="${l.id}"><span class="chapter-number">${String(l.n).padStart(2, '0')}</span><span class="chapter-copy"><b>${esc(l.name)}</b><small><span class="diff diff-${l.difficulty.toLowerCase()}">${esc(l.difficulty)}</span> ${esc(l.concept)} ${status}</small></span><span class="stars" aria-label="${st.filter(Boolean).length} of 3 stars">${st.map((s) => `<span class="${s ? '' : 'off'}">★</span>`).join('')}</span></button>`;
   }).join('');
   const earned = LEVELS.flatMap((l) => stars(l.id)).filter(Boolean).length;
   document.getElementById('progress').textContent = `★ ${earned} / ${LEVELS.length * 3} stars`;
@@ -81,11 +84,22 @@ function predictionReady() {
 
 function isPlaying() { return !!run() && !run().done; }
 
+function fieldsValid() {
+  return Array.from(document.querySelectorAll('[data-field][type="number"]')).every((input) =>
+    input.value !== '' && Number.isFinite(input.valueAsNumber) && input.validity.valid);
+}
+
+// Submit needs a design and a guess at how many tests it will pass.
+function submitReady() {
+  const g = S.subGuess[key()];
+  return design().blocks.length > 0 && g !== undefined && g !== '' && fieldsValid();
+}
+
 function renderEditTools() {
   const h = historyStatus(), playing = isPlaying();
   document.getElementById('undo-design').disabled = playing || !h.undo;
   document.getElementById('redo-design').disabled = playing || !h.redo;
-  document.getElementById('reset-design').disabled = playing || JSON.stringify(design()) === JSON.stringify(L().design);
+  document.getElementById('reset-design').disabled = playing || JSON.stringify(design()) === JSON.stringify(starterOf(L()));
   document.getElementById('reset-design').textContent = world() === 'cafe' ? 'Reset shop' : 'Reset design';
 }
 
@@ -94,12 +108,15 @@ function updateRunReadiness() {
   const btn = document.getElementById('run-btn'); if (btn) btn.disabled = playing || !ready;
   const note = document.getElementById('ready-note');
   if (note) note.textContent = ready ? '' : 'Finish your settings and commit to a guess first.';
+  const sub = document.getElementById('submit-btn'); if (sub) sub.disabled = playing || !submitReady();
+  const subNote = document.getElementById('submit-note');
+  if (subNote) subNote.textContent = submitReady() ? '' : design().blocks.length ? 'Guess how many tests it will pass.' : 'Build something first.';
 }
 
 function updateWorkbench() {
   renderConnections(); renderEditTools();
   const playing = isPlaying();
-  document.querySelectorAll('[data-add], #connection-body button, #connection-body select, [data-field], #del-block, #del-wire').forEach((el) => {
+  document.querySelectorAll('[data-add], #connection-body button, #connection-body select, [data-field], #del-block, #del-wire, #p-tests, [data-watch]').forEach((el) => {
     el.disabled = playing || (el.id === 'connect-btn' && !design().blocks.length);
   });
   updateRunReadiness();
@@ -128,6 +145,8 @@ R.toast = toast;
 
 function designChanged() {
   const r = run(); if (r) r.stale = true;
+  const sub = submission(); if (sub) sub.stale = true;
+  document.querySelector('#side [aria-label="Submission"]')?.remove();
   S.problems[key()] = [];
   document.querySelector('#side [aria-label="Result"]')?.remove();
   document.querySelector('#side [aria-label="Tutor"]')?.remove();
@@ -183,8 +202,30 @@ function startRun() {
   play(key(), log);
 }
 
-function play(k, log, stale = false) {
-  const r = { log, t: 0, done: false, stale };
+// Submit: the sample plus every hidden test. A failure replays on the board so the learner can watch it.
+function startSubmit() {
+  if (isPlaying() || !submitReady()) return;
+  cancelSceneTransition(); cancelDrag(); endDesignEdit();
+  const sd = simDesign(design());
+  let problems = validate(sd);
+  if (world() === 'cafe') problems = problems.map(cafeWords);
+  S.problems[key()] = problems;
+  if (problems.length) { renderSide(); updateWorkbench(); return; }
+  const g = grade(sd, S.level, world());
+  S.submits[key()] = { ...g, guess: Number(S.subGuess[key()]), stale: false };
+  if (g.accepted) S.accepted[key()] = true;
+  delete S.subGuess[key()];
+  S.sel = null;
+  if (g.failed) watchTest(g.failed);
+  else renderAll();
+}
+
+function watchTest(t) {
+  play(key(), t.log, false, { scenario: t.scenario, kind: 'test', label: `Test ${t.n} · ${t.name}` });
+}
+
+function play(k, log, stale = false, meta = {}) {
+  const r = { log, t: 0, done: false, stale, ...meta };
   S.runs[k] = r; S.hoverT = null;
   resetFx();
   const N = log.ticks.length;
@@ -217,6 +258,11 @@ function switchScene(name, animate) {
   const go = () => {
     sceneTransitionTimer = null;
     if (S.level !== level) { app.classList.remove('morph'); return; }
+    // The first time software opens, it starts from the learner's own coffee shop: same diagram, new names.
+    const lv = LEVELS.find((l) => l.id === level), pristine = JSON.stringify(starterOf(lv));
+    if (name === 'software' && JSON.stringify(S.designs[level].software) === pristine && JSON.stringify(S.designs[level].cafe) !== pristine) {
+      S.designs[level].software = clone(S.designs[level].cafe);
+    }
     S.scene[level] = name; S.sel = null; S.hoverT = null; resetFx();
     S.banner = name === 'software' && animate ? S.level : null;
     renderAll();
@@ -270,6 +316,13 @@ document.addEventListener('click', (e) => {
     document.getElementById('wire-to').focus(); return;
   }
   if (id === 'run-btn') { S.banner = null; renderOverlay(); startRun(); return; }
+  if (id === 'submit-btn') { S.banner = null; renderOverlay(); startSubmit(); return; }
+  const watch = e.target.closest('[data-watch]');
+  if (watch) {
+    const t = submission()?.results.find((x) => x.id === watch.dataset.watch);
+    if (t && !isPlaying()) watchTest(t);
+    return;
+  }
   if (id === 'to-software') { switchScene('software', true); return; }
   if (id === 'banner-ok') { S.banner = null; renderOverlay(); const pv = document.getElementById('p-val'); if (pv) pv.focus(); return; }
   if (id === 'hint-btn') { S.hint[key()] = (S.hint[key()] || 0) + 1; renderSide(); updateWorkbench(); return; }
@@ -282,13 +335,14 @@ document.addEventListener('click', (e) => {
     S.sel = null; designChanged(); renderBoard(); renderRun(); renderSide(); updateWorkbench(); return;
   }
   if (id === 'del-wire') { rememberDesign(); design().wires.splice(S.sel.i, 1); S.sel = null; designChanged(); renderBoard(); renderRun(); renderSide(); updateWorkbench(); return; }
-  if (id === 'replay') { play(key(), run().log, !!run().stale); return; }
+  if (id === 'replay') { const r = run(); play(key(), r.log, !!r.stale, { scenario: r.scenario, kind: r.kind, label: r.label }); return; }
   const hit = e.target.closest('[data-wire]');
   if (hit) { S.sel = { kind: 'wire', i: +hit.dataset.wire }; renderBoard(); renderSide(); updateWorkbench(); }
 });
 
 document.addEventListener('input', (e) => {
   const t = e.target;
+  if (t.id === 'p-tests') { S.subGuess[key()] = t.value; updateRunReadiness(); return; }
   if (t.id === 'p-block' || t.id === 'p-val') {
     const p = S.pred[key()] = S.pred[key()] || {};
     if (t.id === 'p-block') p.block = t.value; else p.value = t.value;

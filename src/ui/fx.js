@@ -1,7 +1,7 @@
 // Moving customers and packets, drawn on a canvas under the blocks.
 // Purely visual: it reads the current tick of the run and never feeds back into the simulator.
 import { SCALE } from '../levels/levels.js';
-import { world, scene, design, run, tickAt, typeOf, fmtN } from './state.js';
+import { world, scene, design, run, tickAt, typeOf, fmtN, runScenario } from './state.js';
 import { geom, NODE_W, NODE_H } from './board.js';
 
 export const SPEED = 42; // ticks per second of playback
@@ -56,7 +56,7 @@ function frame(now) {
   const dt = Math.min(0.05, (now - (fx.last || now)) / 1000);
   fx.last = now;
   ctx.clearRect(0, 0, 900, 400);
-  const r = run(), d = design(), sc = scene().scenario;
+  const r = run(), d = design(), sc = runScenario();
   const tick = r && !r.stale ? tickAt(r) : null;
   if (!fx.colors) readColors();
   const C = fx.colors;

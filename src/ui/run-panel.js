@@ -1,5 +1,5 @@
 // The run panel: target checks, time scrubber and three charts with a shared crosshair.
-import { S, W, world, scene, run, esc, fmtN, fmt1, fmtPct } from './state.js';
+import { S, W, world, run, runScenario, esc, fmtN, fmt1, fmtPct } from './state.js';
 
 function niceMax(v) {
   if (v <= 0) return 1;
@@ -49,7 +49,7 @@ function chartSvg(o, width) {
 
 export function renderRun() {
   const el = document.getElementById('run');
-  const r = run(), sc = scene().scenario, Wd = W();
+  const r = run(), sc = runScenario(), Wd = W();
   if (!r) {
     el.innerHTML = `<div class="run-head"><span class="label">Run</span></div><p class="empty">${world() === 'cafe'
       ? 'Make your guess, then open the doors. You’ll see every customer arrive, wait and get served.'
@@ -59,7 +59,7 @@ export function renderRun() {
   const res = r.log.result, done = r.done;
   const check = (ok, label, val, tgt) => `<span class="check ${done ? (ok ? 'ok' : 'bad') : ''}"><span class="mark">${done ? (ok ? '✓' : '✗') : '·'}</span>${label} <span class="mono">${done ? val : '…'}</span> <span class="muted mono">≤ ${tgt}</span></span>`;
   el.innerHTML = `<div class="run-head">
-      <span class="label">${r.stale ? 'Previous run' : 'Run results'}</span>
+      <span class="label">${r.stale ? 'Previous run' : r.label ? esc(r.label) : 'Run results'}</span>
       <div class="checks">
         ${check(res.checks.errors, Wd.checks.errors, fmtPct(res.errorRate), fmtPct(sc.targets.errorRate))}
         ${check(res.checks.slow, Wd.checks.slow(sc.latencyTargetMs), fmtPct(res.slowShare), fmtPct(sc.targets.slowShare))}
@@ -85,7 +85,7 @@ export function renderRun() {
 // Updates only the moving parts, so the slider is never rebuilt while dragged.
 export function renderRunBody() {
   const el = document.getElementById('run');
-  const r = run(), sc = scene().scenario, Wd = W();
+  const r = run(), sc = runScenario(), Wd = W();
   if (!r || !el.querySelector('.charts')) return;
   const ticks = r.log.ticks, N = ticks.length;
   const t = Math.min(r.t, N - 1);

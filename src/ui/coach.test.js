@@ -4,6 +4,7 @@ import { predError, renderSide } from './coach.js';
 import { S, stars, clone } from './state.js';
 import { LEVELS } from '../levels/levels.js';
 import { simulate } from '../sim/sim.js';
+import { grade } from '../levels/grade.js';
 
 // No DOM or server required: grading must remain tied to observed run metrics.
 test('prediction error distinguishes a real zero from an unobserved recovery', () => {
@@ -27,7 +28,7 @@ function renderLesson(options, check) {
     const key = level + ':' + world;
     Object.assign(S, {
       level, scene: { [level]: world }, designs: { [level]: { [world]: d } },
-      pred: {}, hint: {}, problems: {}, sel: null,
+      pred: {}, hint: {}, problems: {}, sel: null, submits: {}, accepted: {}, subGuess: {},
       runs: { [key]: { log, t: log.ticks.length - 1, done: true, stale: false } },
       attempts: { [key]: [{ guessBlock: 's1', actualBlock: 's1', blockRight: true, guess: 20, actual: 50, err: 0.6, passed: log.result.passed, ...attempt }] }
     });
@@ -49,7 +50,7 @@ test('coffee shop and software results use their own units and log language', ()
       assert.ok(html.includes(world === 'cafe' ? 'The rush starts' : 'Traffic jumps'));
       assert.ok(html.includes('60%'));
       assert.ok(html.includes('Chapter stars'));
-      assert.ok(html.includes('Meet every target in the coffee shop.'));
+      assert.ok(html.includes('Submit a coffee shop that passes every test.'));
     });
   }
 });
@@ -68,12 +69,45 @@ test('a recovery not observed before closing is explained without a numeric scor
   });
 });
 
+// A submission as Submit stores it, for the scene being rendered.
+function submit(level, world, d) {
+  const sd = { ...d, blocks: d.blocks.map((b) => ({ ...b, name: b.names[world] })) };
+  const g = grade(sd, level, world);
+  S.submits[level + ':' + world] = { ...g, guess: g.total, stale: false };
+  if (g.accepted) S.accepted[level + ':' + world] = true;
+  return g;
+}
+
+test('a sample pass is not a solve: Run asks for Submit, and hidden tests decide', () => {
+  renderLesson({ edit: (d) => { d.blocks[0].capacity = 200; } }, (render, log) => {
+    assert.equal(log.result.passed, true);
+    let html = render();
+    assert.ok(html.includes('Submit to face the hidden mornings'));
+    assert.ok(!html.includes('See it as software'));
+    const d = S.designs.l1.cafe;
+    const g = submit('l1', 'cafe', d);
+    assert.equal(g.accepted, false, 'capacity 200 survives only the sample');
+    html = render();
+    assert.ok(html.includes(`Failed on test ${g.failed.n}`));
+    assert.ok(html.includes('Two trains at once'));
+    assert.ok(html.includes('Waits ran too long'));
+    assert.ok(!html.includes('See it as software'));
+    d.blocks[0].capacity = 250;
+    assert.equal(submit('l1', 'cafe', d).accepted, true);
+    html = render();
+    assert.ok(html.includes('Accepted'));
+    assert.ok(html.includes('See it as software'));
+    assert.ok(html.includes('1 of 3 stars'));
+  });
+});
+
 test('passing software first returns to the coffee shop instead of skipping it', () => {
   renderLesson({
-    world: 'software', edit: (d) => { d.blocks[0].capacity = 200; },
+    world: 'software', edit: (d) => { d.blocks[0].capacity = 250; },
     attempt: { guess: 0, actual: 0, err: 0 }
   }, (render, log) => {
     assert.equal(log.result.passed, true);
+    assert.equal(submit('l1', 'software', S.designs.l1.software).accepted, true);
     const html = render();
     assert.ok(html.includes('Finish the coffee shop'));
     assert.ok(!html.includes(`All ${LEVELS.length} chapters complete`));
@@ -91,11 +125,12 @@ test('the last chapter does not claim completion when earlier chapters were skip
     attempt: { guess: 1000, actual: 1000, err: 0 }
   }, (render, log) => {
     assert.equal(log.result.passed, true);
+    assert.equal(submit('l4', 'software', S.designs.l4.software).accepted, true);
     let html = render();
     assert.ok(html.includes('Continue: Morning rush'));
     assert.ok(!html.includes(`All ${LEVELS.length} chapters complete`));
     for (const lv of LEVELS) {
-      for (const world of ['cafe', 'software']) S.attempts[lv.id + ':' + world] = [{ passed: true, err: 0 }];
+      for (const world of ['cafe', 'software']) { S.attempts[lv.id + ':' + world] = [{ passed: true, err: 0 }]; S.accepted[lv.id + ':' + world] = true; }
     }
     html = render();
     assert.ok(html.includes(`All ${LEVELS.length} chapters complete`));
@@ -122,8 +157,9 @@ test('prediction error compares finite measurements and caps large errors', () =
 });
 
 test('an unscored first software attempt cannot earn an accuracy star', () => {
-  const previous = S.attempts;
+  const previous = S.attempts, previousAccepted = S.accepted;
   try {
+    S.accepted = { 'l1:cafe': true, 'l1:software': true };
     S.attempts = {
       'l1:cafe': [{ passed: true }],
       'l1:software': [{ passed: false, err: null }, { passed: true, err: 0 }]
@@ -134,6 +170,6 @@ test('an unscored first software attempt cannot earn an accuracy star', () => {
     S.attempts['l1:software'] = [{ passed: true, err: 0.16 }, { passed: true, err: 0 }];
     assert.deepEqual(stars('l1'), [true, true, false]);
   } finally {
-    S.attempts = previous;
+    S.attempts = previous; S.accepted = previousAccepted;
   }
 });

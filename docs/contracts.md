@@ -75,7 +75,7 @@ Event types: `shock` (`spike`, `spikeEnd`, `serverFail`, `serverBack`, `cacheFlu
 
 ## Level
 
-See `src/levels/levels.js`. Each level has `id`, `n`, `name`, `concept`, `reading`, `translate` (coffee shop → software pairs), one starting `design`, and `scenes.cafe` and `scenes.software`, each with `title`, `brief`, `goal`, `predict` (`key` into `metrics`, `scale`, `question`, `unit`), three `hints` (question, idea, where to look) and a `scenario`.
+See `src/levels/levels.js`. Each level has `id`, `n`, `name`, `concept`, `difficulty` (`Easy`, `Medium` or `Hard`), `reading`, `translate` (coffee shop → software pairs), a reference broken `design` that the tests use, an optional `starter` (what the board starts with; defaults to `design`), `tests` (hidden tests for Submit: `{ id, name: { cafe, software }, story: { cafe, software }, change }`, where `change` overrides the sample scenario's `base` or shocks and `null` removes a shock), and `scenes.cafe` and `scenes.software`, each with `title`, `brief`, `goal`, `constraints` (list of limits the hidden tests stay inside), `predict` (`key` into `metrics`, `scale`, `question`, `unit`), three `hints` (question, idea, where to look) and a `scenario`.
 
 ## AI endpoints (to build)
 
