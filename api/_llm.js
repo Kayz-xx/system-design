@@ -43,7 +43,12 @@ export async function callLLM({ instructions, input, schema, maxTokens = 220, en
       }),
       signal: ctrl.signal
     });
-    if (!res.ok) throw new LLMError(`status ${res.status}`);
+    if (!res.ok) {
+      // Log Gemini's own reason (never the key), so a billing or model problem is visible in the server log.
+      const detail = await res.json().then((j) => j.error && j.error.message, () => '').catch(() => '');
+      console.warn(`[gemini] ${model} returned ${res.status}${detail ? ': ' + String(detail).trim().slice(0, 200) : ''}`);
+      throw new LLMError(`status ${res.status}`);
+    }
     const text = outputText(await res.json()).trim();
     if (!schema) return text;
     try { return JSON.parse(text); } catch { throw new LLMError('bad json'); }
