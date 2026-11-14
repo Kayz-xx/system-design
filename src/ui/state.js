@@ -25,6 +25,7 @@ export const S = {
   attempts: {},  // key -> [{ guessBlock, actualBlock, blockRight, guess, actual, err, passed }]
   hint: {},      // key -> hint step shown
   problems: {},  // key -> validation problems
+  history: {},   // key -> { undo, redo, group }; only design edits, never scores
   sel: null,     // { kind: 'block', id } | { kind: 'wire', i }
   wiring: null,  // wire being drawn
   hoverT: null,  // tick under the chart crosshair
@@ -46,6 +47,43 @@ export const nameOf = (d, id) => (id === 'traffic' ? W().trafficName : ((d.block
 // The simulator reads one `name` per block; the UI stores one per world.
 export const simDesign = (d) => ({ ...d, blocks: d.blocks.map((b) => ({ ...b, name: b.names[world()] })) });
 export const tickAt = (r) => (r ? r.log.ticks[Math.min(r.t, r.log.ticks.length - 1)] : null);
+
+const editHistory = () => (S.history[key()] ||= { undo: [], redo: [], group: null });
+const HISTORY_LIMIT = 50;
+
+// Store before mutating. Repeated input events in one focused field form one edit.
+export function rememberDesign(group = null) {
+  const h = editHistory();
+  if (group !== null && h.group === group) return;
+  h.undo.push(clone(design()));
+  if (h.undo.length > HISTORY_LIMIT) h.undo.shift();
+  h.redo = [];
+  h.group = group;
+}
+
+export function endDesignEdit() { editHistory().group = null; }
+
+export function historyStatus() {
+  const h = editHistory();
+  return { undo: h.undo.length > 0, redo: h.redo.length > 0 };
+}
+
+export function restoreDesign(direction) {
+  if (direction !== 'undo' && direction !== 'redo') return false;
+  const h = editHistory(), from = h[direction];
+  if (!from.length) return false;
+  h[direction === 'undo' ? 'redo' : 'undo'].push(clone(design()));
+  S.designs[S.level][world()] = from.pop();
+  h.group = null;
+  return true;
+}
+
+export function resetDesign() {
+  if (JSON.stringify(design()) === JSON.stringify(L().design)) return false;
+  rememberDesign();
+  S.designs[S.level][world()] = clone(L().design);
+  return true;
+}
 
 // Stars per level: coffee shop passed, software passed, first software guess within 15%.
 export function stars(levelId) {
