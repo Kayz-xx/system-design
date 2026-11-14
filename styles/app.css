@@ -369,3 +369,13 @@ h1 em { color: var(--accent); font-weight: 500; }
 .tests li.ok .mark { color: var(--ok); }
 .tests li.bad .mark { color: var(--crit); }
 .tests small { display: block; color: var(--crit); font-size: 12px; }
+
+/* ---------- Cost against the best design ---------- */
+.best { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--line); }
+.best-bars { display: grid; grid-template-columns: auto 1fr auto; gap: 6px 8px; align-items: center; font-size: 12px; margin: 6px 0; }
+.best-bars .bar { height: 8px; border-radius: 4px; background: var(--panel-2); overflow: hidden; }
+.best-bars .bar i { display: block; height: 100%; border-radius: 4px; }
+.best-bars .you { background: var(--queue); }
+.best.optimal .best-bars .you { background: var(--ok); }
+.best-bars .opt { background: var(--ok); }
+.best details summary { cursor: pointer; font-size: 13px; color: var(--ink-2); }

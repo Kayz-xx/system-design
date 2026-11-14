@@ -173,3 +173,19 @@ test('an unscored first software attempt cannot earn an accuracy star', () => {
     S.attempts = previous; S.accepted = previousAccepted;
   }
 });
+
+test('an accepted submission is compared with the best possible cost', () => {
+  renderLesson({ level: 'l2', edit: (d) => { d.blocks[1].copies = 5; d.blocks[1].capacity = 90; } }, (render) => {
+    assert.equal(submit('l2', 'cafe', S.designs.l2.cafe).accepted, true);
+    let html = render();
+    assert.ok(html.includes('Running cost against the best shop'));
+    assert.ok(html.includes('$100/h') && html.includes('$90/h'));
+    assert.ok(html.includes('11% more than the best'));
+    assert.ok(html.includes('A shared line, 4 baristas making 2 a minute each'));
+    Object.assign(S.designs.l2.cafe.blocks[1], { copies: 4, capacity: 100 });
+    submit('l2', 'cafe', S.designs.l2.cafe);
+    html = render();
+    assert.ok(html.includes('Best possible cost'));
+    assert.ok(!html.includes('Show the cheapest shop'));
+  });
+});

@@ -6,6 +6,7 @@ import { askTutor, tutorRequest } from '../ai/tutor.js';
 import { SCALE, LEVELS } from '../levels/levels.js';
 import { S, L, W, world, key, scene, design, run, attempts, nameOf, stars, esc, fmtN, fmt1, fmtPct, runScenario, submission } from './state.js';
 import { FIELDS } from './worlds.js';
+import { bestHtml } from './best-panel.js';
 
 export const predScale = () => scene().predict.scale || 1;
 export const predError = (g, a) => {
@@ -261,6 +262,7 @@ function submissionHtml(lv, w, sub) {
           <button class="btn small" data-watch="${esc(t.id)}">Watch</button>
         </li>`).join('')}</ol>
       ${guessed ? `<p class="muted">${guessed}</p>` : ''}
+      ${sub.accepted ? bestHtml(lv.id, w, sub.results[0].log.result.costPerHour) : ''}
       ${next ? `<div class="btn-row">${next}</div>` : ''}
     </section>`;
 }
