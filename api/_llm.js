@@ -1,7 +1,17 @@
-// One call to the Gemini API (generateContent), shared by the endpoints. Server-side only.
+// One call to Gemini (generateContent), shared by the endpoints. Server-side only.
+// Works with an AI Studio key (AIza…, generativelanguage.googleapis.com) or a Vertex AI express key
+// (AQ.…, aiplatform.googleapis.com, billed to Google Cloud). GEMINI_API=studio|vertex overrides the guess.
 // Throws on any failure; the endpoints turn that into an error response and the client falls back.
 export const DEFAULT_MODEL = 'gemini-2.5-flash';
 export const hasKey = (env) => !!env.GEMINI_API_KEY;
+
+export function endpointFor(env, model) {
+  const api = env.GEMINI_API || (String(env.GEMINI_API_KEY).startsWith('AQ.') ? 'vertex' : 'studio');
+  const m = encodeURIComponent(model);
+  return api === 'vertex'
+    ? `https://aiplatform.googleapis.com/v1/publishers/google/models/${m}:generateContent`
+    : `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`;
+}
 
 export class LLMError extends Error {
   constructor(message, timedOut = false) { super(message); this.timedOut = timedOut; }
@@ -33,7 +43,7 @@ export async function callLLM({ instructions, input, schema, maxTokens = 220, en
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    const res = await fetchImpl(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+    const res = await fetchImpl(endpointFor(env, model), {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
       body: JSON.stringify({

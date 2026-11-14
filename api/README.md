@@ -13,6 +13,7 @@ Serverless functions (Vercel-style `api/*.js`). Owned by the `ai` workstream. Se
 
 ```
 cp .env.example .env        # then set GEMINI_API_KEY; GEMINI_MODEL defaults to gemini-2.5-flash
+                            # an AQ.… key goes to Vertex AI (Google Cloud billing), an AIza… key to AI Studio
 node api/_dev.js            # http://localhost:5173
 ```
 

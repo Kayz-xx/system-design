@@ -79,6 +79,9 @@ test('endpoint: a good reply comes back, and the key stays in the header', async
   assert.equal(out.json.text, 'At 8:20, how many people were still in line?');
   assert.equal(seen[0].url, 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent');
   assert.equal(seen[0].init.headers['x-goog-api-key'], 'test-key');
+  const vertex = [];
+  await tutorResponse(body('l1', 'cafe'), { env: { GEMINI_API_KEY: 'AQ.test', GEMINI_MODEL: 'gemini-x-flash' }, fetchImpl: gemini('At 8:20, how many people were still in line?', vertex) });
+  assert.equal(vertex[0].url, 'https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-x-flash:generateContent');
   assert.ok(!JSON.stringify(seen[0].payload).includes('test-key'));
   assert.match(seen[0].payload.systemInstruction.parts[0].text, /tutor in System Design Sandbox/);
   assert.equal(seen[0].payload.generationConfig.thinkingConfig.thinkingBudget, 0);
