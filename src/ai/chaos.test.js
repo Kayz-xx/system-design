@@ -63,6 +63,8 @@ test('facts and stories use the world’s words', () => {
   assert.equal(storyReason(templateStory(a, 'cafe'), 'cafe'), null);
   assert.equal(storyReason(templateStory(a, 'software'), 'software'), null);
   assert.ok(storyReason('A bus arrives at 8:20 with 40 people.', 'cafe'), 'digits');
+  const one = cleanDesign(passing('l1'), 'cafe');
+  assert.equal(describeAttack({ serverFail: { t: 40, dur: 20 } }, level('l1').scenes.cafe.scenario, one, 'cafe'), 'At 8:10, Barista is out for 20 minutes, and nobody covers.');
   assert.ok(storyReason('The server melts down under a flood of requests.', 'cafe'), 'software words');
 });
 

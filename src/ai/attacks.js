@@ -117,9 +117,10 @@ export function describeAttack(attack, scenario, design, world) {
       : `From ${w.clock(attack.spike.t)}, traffic is ${w.rate(v)} for ${w.dur(attack.spike.dur)}.`);
   }
   if (attack.serverFail) {
-    parts.push(w.cafe
-      ? `At ${w.clock(attack.serverFail.t)}, one of the ${nameOf('server') || 'baristas'} is out for ${w.dur(attack.serverFail.dur)}.`
-      : `At ${w.clock(attack.serverFail.t)}, one copy of ${nameOf('server') || 'the server'} crashes for ${w.dur(attack.serverFail.dur)}.`);
+    const s = design.blocks.find((x) => x.type === 'server') || {}, n = s.name || (w.cafe ? 'Baristas' : 'the server');
+    const at = w.clock(attack.serverFail.t), dur = w.dur(attack.serverFail.dur);
+    if (s.copies === 1) parts.push(w.cafe ? `At ${at}, ${n} is out for ${dur}, and nobody covers.` : `At ${at}, ${n} crashes for ${dur}. It is the only copy.`);
+    else parts.push(w.cafe ? `At ${at}, one of the ${n} is out for ${dur}.` : `At ${at}, one copy of ${n} crashes for ${dur}.`);
   }
   if (attack.cacheFlush) {
     parts.push(w.cafe
