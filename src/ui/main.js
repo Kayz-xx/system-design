@@ -129,11 +129,36 @@ function closeTopics() {
   document.getElementById('topics-open').focus({ preventScroll: true });
 }
 
+// The board is a 900 x 400 box, but blocks may be dragged anywhere in the visible frame around it. The
+// stage space grows by the overhang on both sides, so the layout stays centred and blocks outside the box
+// are still drawn, scrollable and inside Fit view.
+function syncExtent() {
+  const d = design(), items = [d.traffic, ...d.blocks].filter(Boolean);
+  const e = Math.ceil(Math.max(0, ...items.map((b) => -b.x), ...items.map((b) => b.x + NODE_W - 900)));
+  if (e === fx.extra) return;
+  fx.extra = e;
+  document.getElementById('stage-space').style.setProperty('--extra', e + 'px');
+  sizeCanvas();
+}
+
+// Where a block may go across. The café floor is drawn as the 900px room, so blocks stay inside it. The
+// software grid fills the whole frame, so there a block may go anywhere in it (less a small margin), and
+// never less than the box or what the board already holds.
+function xBounds() {
+  if (world() === 'cafe') return [0, 900 - NODE_W];
+  const view = document.querySelector('.board-scroll'), st = document.getElementById('stage');
+  const a = view.getBoundingClientRect(), b = st.getBoundingClientRect(), z = b.width / 900 || 1;
+  const lo = Math.min(0, -fx.extra, (a.left - b.left) / z + 8);
+  const hi = Math.max(900, 900 + fx.extra, (a.left + view.clientWidth - b.left) / z - 8);
+  return [lo, hi - NODE_W];
+}
+
 let cameraReady = false;
 function fitFloor(force = false) {
   const view = document.getElementById('board-scroll') || document.querySelector('.board-scroll');
   if (!view) return;
-  const fitted = Math.min(1.1, view.clientWidth / 900, Math.max(180, view.clientHeight) / 400);
+  syncExtent();
+  const fitted = Math.min(1.1, view.clientWidth / (900 + 2 * fx.extra), Math.max(180, view.clientHeight) / 400);
   S.zoom = force ? fitted : Math.max(view.clientWidth < 700 ? .68 : .8, fitted);
   document.getElementById('stage-space').style.setProperty('--zoom', S.zoom);
   cameraReady = true;
@@ -231,6 +256,7 @@ function submitReady() {
 }
 
 function renderEditTools() {
+  syncExtent(); // after every drop, undo and level switch; not while dragging, so the stage never shifts mid-drag
   const h = historyStatus(), playing = isPlaying();
   document.getElementById('undo-design').disabled = playing || !h.undo;
   document.getElementById('redo-design').disabled = playing || !h.redo;
@@ -685,7 +711,8 @@ document.addEventListener('pointerdown', (e) => {
   const node = e.target.closest('[data-node]');
   if (!node) { if (!e.target.closest('[data-wire]')) { S.sel = null; renderBoard(); renderSide(); } return; }
   const id = node.dataset.node;
-  const obj = id === 'traffic' ? null : d.blocks.find((b) => b.id === id);
+  // The café's door is part of the room drawing, so it stays put; in the lab, Requests moves like any node.
+  const obj = id === 'traffic' ? (world() === 'cafe' ? null : d.traffic) : d.blocks.find((b) => b.id === id);
   if (!obj) return;
   drag = { kind: 'node', id, obj, ox: pos.x - obj.x, oy: pos.y - obj.y, rect, moved: false, startX: obj.x, startY: obj.y };
   e.preventDefault();
@@ -695,7 +722,8 @@ document.addEventListener('pointermove', (e) => {
   if (drag) {
     const pos = point(e, drag.rect);
     if (drag.kind === 'wire') { S.wiring.x2 = pos.x; S.wiring.y2 = pos.y; renderBoard(); return; }
-    const nx = Math.max(0, Math.min(900 - NODE_W, pos.x - drag.ox));
+    const [x0, x1] = drag.xb || (drag.xb = xBounds());
+    const nx = Math.max(x0, Math.min(x1, pos.x - drag.ox));
     const ny = Math.max(0, Math.min(400 - NODE_H - 40, pos.y - drag.oy));
     if (Math.abs(nx - drag.obj.x) + Math.abs(ny - drag.obj.y) > 3) drag.moved = true;
     if (drag.moved) { drag.obj.x = Math.round(nx / 10) * 10; drag.obj.y = Math.round(ny / 10) * 10; renderBoard(); }
@@ -731,7 +759,7 @@ document.addEventListener('pointerup', (e) => {
       obj.x = startX; obj.y = startY; rememberDesign(); obj.x = x; obj.y = y;
       renderEditTools();
     }
-  } else inspectEquipment(drag.id);
+  } else if (drag.id !== 'traffic') inspectEquipment(drag.id);
   drag = null;
 });
 
@@ -750,15 +778,17 @@ document.addEventListener('keydown', (e) => {
   if (node && directions[e.key] && !e.ctrlKey && !e.metaKey && !e.altKey) {
     e.preventDefault();
     if (isPlaying()) return;
-    const b = design().blocks.find((item) => item.id === node.dataset.node);
+    const nid = node.dataset.node;
+    const b = nid === 'traffic' ? (world() === 'cafe' ? null : design().traffic) : design().blocks.find((item) => item.id === nid);
     if (!b) return;
     const [dx, dy] = directions[e.key], step = e.shiftKey ? 50 : 10;
-    const x = Math.max(0, Math.min(900 - NODE_W, b.x + dx * step));
+    const [x0, x1] = xBounds();
+    const x = Math.max(x0, Math.min(x1, b.x + dx * step));
     const y = Math.max(0, Math.min(400 - NODE_H - 40, b.y + dy * step));
     if (x === b.x && y === b.y) return;
-    rememberDesign(`move:${b.id}`); b.x = x; b.y = y;
+    rememberDesign(`move:${nid}`); b.x = x; b.y = y;
     renderBoard(); renderEditTools();
-    document.querySelector(`[data-node="${b.id}"]`).focus({ preventScroll: true });
+    document.querySelector(`[data-node="${nid}"]`).focus({ preventScroll: true });
     return;
   }
   if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('.node[data-node]') && e.target.dataset.node !== 'traffic') {

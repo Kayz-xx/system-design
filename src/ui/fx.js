@@ -5,7 +5,8 @@ import { S, world, design, run, tickAt, typeOf, fmtN, runScenario } from './stat
 import { geom, NODE_W, NODE_H } from './board.js';
 
 export const SPEED = 12; // ticks per second of playback
-export const fx = { parts: [], drops: [], exits: [], acc: {}, last: 0, colors: null, playing: false };
+// `extra`: how far the board reaches past its 900-wide box on each side (blocks placed outside it), in board px.
+export const fx = { parts: [], drops: [], exits: [], acc: {}, last: 0, colors: null, playing: false, extra: 0 };
 
 let canvas, ctx;
 
@@ -14,8 +15,8 @@ export function invalidateColors() { fx.colors = null; }
 
 export function sizeCanvas() {
   const dpr = Math.min(2, window.devicePixelRatio || 1);
-  canvas.width = 900 * dpr; canvas.height = 400 * dpr;
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  canvas.width = (900 + 2 * fx.extra) * dpr; canvas.height = 400 * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, fx.extra * dpr, 0);
 }
 
 function readColors() {
@@ -65,7 +66,7 @@ function dot(x, y, color, r, alpha, stride = 0, coffee = false) {
 function frame(now) {
   const dt = Math.min(0.05, (now - (fx.last || now)) / 1000);
   fx.last = now;
-  ctx.clearRect(0, 0, 900, 400);
+  ctx.clearRect(-fx.extra, 0, 900 + 2 * fx.extra, 400);
   const r = run(), d = design(), sc = runScenario();
   const tick = r && !r.stale ? tickAt(r) : null;
   if (!fx.colors) readColors();
