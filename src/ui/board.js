@@ -97,7 +97,8 @@ export function renderBoard() {
     const rb = tick ? tick.blocks[b.id] : null;
     const st = nodeState(b, rb);
     const sel = S.sel && S.sel.kind === 'block' && S.sel.id === b.id;
-    html += `<div class="node ${st.cls}${sel ? ' sel' : ''}" style="left:${b.x}px;top:${b.y}px" data-node="${b.id}" data-type="${b.type}" tabindex="0" aria-label="${esc(b.names[w])}">
+    const placing = S.buildFocus[S.level + ':' + w] === b.id && !S.guidanceDismissed[S.level + ':' + w];
+    html += `<div class="node ${st.cls}${sel ? ' sel' : ''}${placing ? ' placing' : ''}" style="left:${b.x}px;top:${b.y}px" data-node="${b.id}" data-type="${b.type}" tabindex="0" aria-label="${esc(b.names[w])}">
       ${artifact(w, b.type, rb && Number.isFinite(rb.alive) ? rb.alive : b.copies || 1)}<span class="port-in"></span>
       <div class="node-top"><span class="node-type">${icon(w, b.type)}${esc(Wd.type[b.type])}</span>${st.chip}</div>
       <button class="node-controls" data-edit-node="${b.id}" aria-label="Adjust ${esc(b.names[w])} settings" aria-expanded="${!!sel}" ${r && !r.done ? 'disabled' : ''}>
@@ -130,7 +131,7 @@ export function renderOverlay() {
     html += `<div class="banner" role="dialog" aria-label="Translation">
       <h3>Same diagram. Same numbers. New names.</h3>
       <dl class="pairs">${L().translate.map(([a, b]) => `<dt class="from">${esc(a)}</dt><span class="arrow">→</span><dd class="to">${esc(b)}</dd>`).join('')}</dl>
-      <div class="btn-row" style="margin-top:12px"><button class="btn primary small" id="banner-ok">Predict the software version</button></div>
+      <div class="btn-row" style="margin-top:12px"><button class="btn primary small" id="banner-ok">Back to the system</button></div>
     </div>`;
   }
   if (S.toast) html += `<div class="toast" role="status">${esc(S.toast)}</div>`;

@@ -46,6 +46,9 @@ export const S = {
   subGuess: {},  // key -> how many tests the learner expects to pass
   problems: {},  // key -> validation problems
   history: {},   // key -> { undo, redo, group }; only design edits, never scores
+  buildFocus: {}, // key -> equipment being placed or inspected, without opening settings
+  guidanceDismissed: {}, // key -> the learner chose to keep building independently
+  explore: {},   // key -> show the software overview before offering a run
   sel: null,     // { kind: 'block', id } | { kind: 'wire', i }
   wiring: null,  // wire being drawn
   hoverT: null,  // tick under the chart crosshair

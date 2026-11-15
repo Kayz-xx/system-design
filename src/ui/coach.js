@@ -9,6 +9,7 @@ import { FIELDS } from './worlds.js';
 import { bestHtml } from './best-panel.js';
 import { mapHtml } from './survival-panel.js';
 import { whyHtml } from './why-panel.js';
+import { connectionGuide } from './build-guide.js';
 
 export const predScale = () => scene().predict.scale || 1;
 export const predError = (g, a) => {
@@ -150,6 +151,27 @@ export function topicHtml(lv, w) {
 const closeTask = '<button class="icon-btn close" id="close-task" aria-label="Back to the floor">×</button>';
 const shell = (label, title, body, id = '', extra = '') => `<section class="sheet ${extra}" ${id ? `id="${id}"` : ''} aria-label="${label}" tabindex="-1">${closeTask}<h2>${title}</h2>${body}</section>`;
 
+function connectionTask(guide, cafe) {
+  const { block, side, plans, addType } = guide;
+  const label = (plan) => plan.remove
+    ? `${cafe ? 'Put' : 'Insert'} ${nameOf(design(), block.id)} before ${nameOf(design(), plan.remove[0][1])}`
+    : plan.add.map(([from, to]) => `${nameOf(design(), from)} → ${nameOf(design(), to)}`).join(', ');
+  const choice = plans.length > 1 ? `<select id="guide-choice" aria-label="Choose a connection">${plans.map((plan, i) => `<option value="${i}">${esc(label(plan))}</option>`).join('')}</select>` : '';
+  const suggestion = plans.length === 1 ? `<span class="connection-suggestion">${esc(label(plans[0]))}</span>` : '';
+  const additions = {
+    server: cafe ? ['Add a barista', 'A barista takes orders and sends them to your equipment.'] : ['Add a server', 'A server handles requests and sends them to other components.'],
+    database: cafe ? ['Add an espresso machine', 'An espresso machine is the next stop for these orders.'] : ['Add a database', 'A database is needed to complete this path.'],
+    loadBalancer: cafe ? ['Add a shared line', 'A shared line lets customers reach another barista.'] : ['Add a load balancer', 'A load balancer lets requests reach another server.']
+  };
+  const description = addType ? additions[addType][1]
+    : plans.length ? `${esc(nameOf(design(), block.id))}: ${side === 'input' ? cafe ? 'choose where its orders come from.' : 'choose its incoming connection.' : cafe ? 'choose where orders go next.' : 'choose its next connection.'}`
+      : cafe ? 'No matching connection yet. Keep building or arrange the connections.' : 'No compatible connection yet. Keep building or review the existing connections.';
+  const connect = plans.length ? `<button class="btn primary" id="guide-connect">${plans[0].remove && plans.length === 1 ? cafe ? 'Put it in the line →' : 'Insert in path →' : 'Connect →'}</button>`
+    : addType ? `<button class="btn primary" data-add="${addType}">${additions[addType][0]}</button>`
+      : '<button class="btn" id="connections-open">View connections</button>';
+  return `<section class="task connection-task" aria-label="Connection suggestion"><div class="task-copy"><div class="eyebrow">${cafe ? 'On the floor' : 'On the canvas'}</div><h2>Connect it when you’re ready.</h2><p>${description}</p>${suggestion}</div><div class="task-actions">${choice}${connect}<button class="text-btn" data-edit-node="${block.id}">Adjust settings</button><button class="text-btn" id="guide-dismiss">Keep building</button></div></section>`;
+}
+
 export function renderSide() {
   const lv = L(), w = world(), sn = scene(), d = design(), r = run(), p = S.pred[key()] || {};
   const atts = attempts(), last = atts[atts.length - 1], phase = S.labPhase?.[key()] || 'build';
@@ -186,7 +208,13 @@ export function renderSide() {
     html = `<section class="task" aria-label="Result"><div class="task-copy"><span class="badge ${passed ? 'pass' : 'fail'}">${passed ? cafe ? 'Morning held up' : 'Sample passed' : 'Room to improve'}</span><h2>${headline}</h2><p>You predicted ${fmtPred(last.guess)}.${sn.predict.key !== 'recoverySeconds' ? ` The result was ${actual}.` : ''} ${passed ? cafe ? 'Ready to try a few different mornings?' : 'Ready to test different traffic conditions?' : cafe ? 'Try a change on the floor, then open again.' : 'Change the design, then try again.'}</p><details class="result-notes"><summary>What happened?</summary><ol class="log">${events.map((e) => `<li><time>${W().clock(e.t)}</time><span>${e.s}</span></li>`).join('')}</ol></details>${hint ? `<p class="hint" ${hint.loading ? 'aria-busy="true"' : ''}>${hint.loading ? 'Finding a little nudge…' : esc(hint.text)}</p>` : ''}</div><div class="task-actions"><button class="btn primary" id="${passed ? 'submit-open' : 'return-build'}">${passed ? cafe ? 'Try a full week →' : 'Test all scenarios →' : 'Make a change →'}</button>${!passed && step < 3 ? `<button class="text-btn" id="hint-btn">${cafe ? 'A little nudge' : 'Get a hint'}</button>` : ''}</div></section>`;
   } else {
     const empty = !d.blocks.some((b) => b.type === 'server');
-    html = `<section class="task" aria-label="Build experiment"><div class="task-copy"><div class="eyebrow">${atts.length ? 'Try something different' : 'Your move'}</div><h2>${empty ? cafe ? 'Every café needs a barista.' : 'Start with a server.' : cafe ? 'Make the morning work.' : 'Make the system work.'}</h2><p>${empty ? cafe ? 'Place one on the floor, then connect it to the door.' : 'Add a server and connect it to incoming requests.' : 'Tap Adjust settings on an item to change how it works.'}</p></div><div class="task-actions"><button class="btn primary" id="${empty ? 'equipment-open' : 'predict-open'}">${empty ? cafe ? 'Choose equipment →' : 'Add a component →' : cafe ? 'Predict & try →' : 'Predict & run →'}</button>${atts.length ? `<button class="text-btn" id="submit-open">${cafe ? 'Try a full week' : 'Test all scenarios'}</button>` : ''}${done ? '<button class="text-btn" id="review-open">Last run</button>' : ''}</div></section>`;
+    const guide = !S.guidanceDismissed[key()] && connectionGuide(d, S.buildFocus[key()]);
+    const exploring = !cafe && S.explore[key()];
+    if (guide) html = connectionTask(guide, cafe);
+    else if (exploring) html = `<section class="task" aria-label="Explore software"><div class="task-copy"><div class="eyebrow">Take a look around</div><h2>Your café, as software.</h2><p>The layout is yours. Follow the connections and inspect any component before trying a run.</p></div><div class="task-actions"><button class="btn primary" id="predict-open">Predict &amp; run →</button><button class="text-btn" id="translation-open">Compare the names</button></div></section>`;
+    else {
+      html = `<section class="task" aria-label="Build experiment"><div class="task-copy"><div class="eyebrow">${atts.length ? 'Try something different' : 'Your move'}</div><h2>${empty ? cafe ? 'Every café needs a barista.' : 'Start with a server.' : cafe ? 'Make the morning work.' : 'Make the system work.'}</h2><p>${empty ? cafe ? 'Place one on the floor, then connect it to the door.' : 'Add a server and connect it to incoming requests.' : 'Tap Adjust settings on an item to change how it works.'}</p></div><div class="task-actions"><button class="btn primary" id="${empty ? 'equipment-open' : 'predict-open'}">${empty ? cafe ? 'Choose equipment →' : 'Add a component →' : cafe ? 'Predict & try →' : 'Predict & run →'}</button>${atts.length ? `<button class="text-btn" id="submit-open">${cafe ? 'Try a full week' : 'Test all scenarios'}</button>` : ''}${done ? '<button class="text-btn" id="review-open">Last run</button>' : ''}</div></section>`;
+    }
   }
   document.getElementById('side').innerHTML = html;
 }

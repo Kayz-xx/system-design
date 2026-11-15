@@ -9,6 +9,7 @@ import { fx, SPEED, startFx, sizeCanvas, resetFx, invalidateColors } from './fx.
 import { renderRun, renderRunBody, tickFromPointer } from './run-panel.js';
 import { renderSide, predScale, predError } from './coach.js';
 import { drawMap, mapMorning, cellLabel } from './survival-panel.js';
+import { connectionGuide, applyConnectionPlan } from './build-guide.js';
 
 /* ---------- Header and palette ---------- */
 function renderTabs() {
@@ -103,6 +104,7 @@ function fitFloor(force = false) {
 
 function setTask(phase) {
   S.labPhase[key()] = phase; S.sel = null; S.banner = null;
+  if (phase === 'predict') S.explore[key()] = false;
   document.getElementById('equipment-menu').open = false;
   document.getElementById('connection-tools').open = false;
   document.querySelector('.chapter-menu').open = false;
@@ -246,6 +248,7 @@ function designChanged() {
   const sub = submission(); if (sub) sub.stale = true;
   document.querySelector('#side [aria-label="Submission"]')?.remove();
   S.problems[key()] = []; S.labPhase[key()] = 'build';
+  S.guidanceDismissed[key()] = false; S.explore[key()] = false;
   document.querySelector('#side [aria-label="Result"]')?.remove();
   document.querySelector('#side [aria-label="Tutor"]')?.remove();
   const p = S.pred[key()];
@@ -267,6 +270,7 @@ function historyAction(action) {
 }
 
 function addBlock(type) {
+  if (isPlaying()) return;
   const d = design();
   document.getElementById('equipment-menu').open = false;
   const n = d.blocks.filter((b) => b.type === type).length;
@@ -274,10 +278,24 @@ function addBlock(type) {
   Object.keys(WORLDS).forEach((x) => { names[x] = WORLDS[x].defaultName[type] + (n ? ' ' + (n + 1) : ''); });
   const id = type.slice(0, 2) + (S.seq++) + 'x';
   const k = d.blocks.length;
+  const width = Math.max(NODE_W, 150 / S.zoom), height = 78 + 85 / Math.min(1, S.zoom);
+  const positions = [650, 210, 430].flatMap((x) => [20, 210].map((y) => ({ x, y })));
+  const position = positions.find(({ x, y }) => ![d.traffic, ...d.blocks].some((b) =>
+    Math.abs((x + NODE_W / 2) - (b.x + NODE_W / 2)) < width + 12 && Math.abs(y - b.y) < height + 12))
+    || { x: 230 + (k * 80) % 480, y: 30 + (k * 100) % 260 };
   rememberDesign();
-  d.blocks.push(Object.assign({ id, type, names, x: 230 + (k * 80) % 480, y: 30 + (k * 100) % 260 }, clone(DEFAULTS[type])));
-  S.sel = { kind: 'block', id };
+  d.blocks.push(Object.assign({ id, type, names, ...position }, clone(DEFAULTS[type])));
+  S.sel = null; S.buildFocus[key()] = id;
   designChanged(); renderBoard(); renderRun(); renderSide(); updateWorkbench();
+  const placed = document.querySelector(`[data-node="${id}"]`);
+  placed?.focus({ preventScroll: true });
+  placed?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+}
+
+function inspectEquipment(id) {
+  S.sel = null; S.buildFocus[key()] = id; S.guidanceDismissed[key()] = false;
+  S.labPhase[key()] = 'build';
+  renderBoard(); renderSide(); updateWorkbench();
 }
 
 function startRun() {
@@ -297,7 +315,7 @@ function startRun() {
   const guess = parseFloat(p.value);
   const actualBlock = log.result.firstFailure ? log.result.firstFailure.block : 'none';
   attempts().push({ guessBlock: p.block, actualBlock, blockRight: p.block === actualBlock, guess, actual, err: predError(guess, actual), passed: log.result.passed });
-  S.pred[key()] = {}; S.hint[key()] = 0; S.sel = null; S.labPhase[key()] = 'review';
+  S.pred[key()] = {}; S.hint[key()] = 0; S.sel = null; S.buildFocus[key()] = null; S.labPhase[key()] = 'review';
   play(key(), log);
 }
 
@@ -367,10 +385,11 @@ function switchScene(name, animate) {
       S.designs[level].software = clone(S.designs[level].cafe);
     }
     S.scene[level] = name; S.sel = null; S.hoverT = null; resetFx();
-    S.banner = name === 'software' && animate ? S.level : null;
+    S.banner = null;
+    S.labPhase[key()] = 'build'; S.buildFocus[key()] = null;
+    S.explore[key()] = name === 'software';
     renderAll();
-    if (S.banner) document.getElementById('banner-ok')?.focus({ preventScroll: true });
-    else document.querySelector(`[data-scene="${name}"]`)?.focus({ preventScroll: true });
+    document.getElementById('main').focus({ preventScroll: true });
     requestAnimationFrame(() => app.classList.remove('morph'));
   };
   if (animate && !reducedMotion()) { app.classList.add('morph'); sceneTransitionTimer = setTimeout(go, 300); }
@@ -405,6 +424,31 @@ document.addEventListener('click', (e) => {
   const add = e.target.closest('[data-add]');
   if (add) { addBlock(add.dataset.add); return; }
   const id = action?.id || e.target.id;
+  if (id === 'guide-connect') {
+    if (isPlaying()) return;
+    const guide = connectionGuide(simDesign(design()), S.buildFocus[key()]);
+    const plan = guide?.plans[Number(document.getElementById('guide-choice')?.value || 0)];
+    const next = applyConnectionPlan(simDesign(design()), plan);
+    if (!next) { renderSide(); return; }
+    rememberDesign(); design().wires = next.wires;
+    S.sel = null;
+    designChanged(); renderBoard(); renderRun(); renderSide(); updateWorkbench();
+    document.getElementById('guide-connect')?.focus({ preventScroll: true });
+    return;
+  }
+  if (id === 'guide-dismiss') {
+    S.guidanceDismissed[key()] = true; S.buildFocus[key()] = null;
+    renderBoard(); renderSide(); updateWorkbench();
+    document.getElementById('main').focus({ preventScroll: true }); return;
+  }
+  if (id === 'connections-open') {
+    document.getElementById('connection-tools').open = true;
+    document.getElementById('wire-from').focus(); return;
+  }
+  if (id === 'translation-open') {
+    S.banner = S.level; renderOverlay();
+    document.getElementById('banner-ok')?.focus({ preventScroll: true }); return;
+  }
   if (action?.dataset.editNode) {
     if (isPlaying()) return;
     endDesignEdit();
@@ -478,7 +522,7 @@ document.addEventListener('click', (e) => {
     return;
   }
   if (id === 'to-software') { switchScene('software', true); return; }
-  if (id === 'banner-ok') { S.banner = null; setTask('predict'); return; }
+  if (id === 'banner-ok') { S.banner = null; setTask('build'); document.getElementById('main').focus({ preventScroll: true }); return; }
   if (id === 'hint-btn') { S.hint[key()] = (S.hint[key()] || 0) + 1; renderSide(); updateWorkbench(); return; }
   if (id === 'del-block') {
     if (isPlaying()) return;
@@ -619,7 +663,7 @@ document.addEventListener('pointerup', (e) => {
       obj.x = startX; obj.y = startY; rememberDesign(); obj.x = x; obj.y = y;
       renderEditTools();
     }
-  } else { S.sel = { kind: 'block', id: drag.id }; renderBoard(); renderSide(); updateWorkbench(); }
+  } else inspectEquipment(drag.id);
   drag = null;
 });
 
@@ -651,8 +695,9 @@ document.addEventListener('keydown', (e) => {
   }
   if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('.node[data-node]') && e.target.dataset.node !== 'traffic') {
     if (e.target !== e.target.closest('.node')) return;
-    S.sel = { kind: 'block', id: e.target.dataset.node }; renderBoard(); renderSide(); updateWorkbench();
-    document.querySelector('#side .field-row [data-field]')?.focus(); e.preventDefault();
+    const id = e.target.dataset.node;
+    inspectEquipment(id);
+    document.getElementById('guide-connect')?.focus({ preventScroll: true }); e.preventDefault();
   }
 });
 

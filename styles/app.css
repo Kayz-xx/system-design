@@ -253,11 +253,23 @@ h1 { margin: 0; font: 500 clamp(24px, 2.6vw, 34px)/1.2 var(--display); letter-sp
 .node-controls { position: absolute; top: 78px; width: 150px; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--ink); font-family: var(--results-font); cursor: pointer; transform: scale(max(1, calc(1 / var(--zoom, 1)))); transform-origin: center top; touch-action: manipulation; }
 .node-controls .node-name { max-width: 100%; padding: 0; background: none; white-space: normal; font: 600 17px/1.2 var(--results-font); }
 .node-controls .node-sub { margin: 0; font: 14px/1.4 var(--results-font); color: var(--ink-2); }
-.node-edit-hint { display: flex; justify-content: center; gap: 12px; width: 100%; color: var(--accent); font-size: 14px; font-weight: 600; }
+.node-edit-hint { display: flex; justify-content: center; gap: 6px; width: 100%; color: var(--accent); font-size: 14px; font-weight: 600; white-space: nowrap; }
 .node-controls:hover, .node.sel .node-controls { border-color: var(--accent); background: var(--accent-soft); }
 .node-controls:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
 .node-controls:disabled { cursor: default; border-color: transparent; background: var(--bg); opacity: 1; padding: 3px 6px; }
 .node-controls:disabled .node-edit-hint { display: none; }
+.node.placing .artifact { filter: drop-shadow(0 3px 0 var(--accent-soft)); }
+.node.placing .node-controls { border-color: var(--accent); }
+.connection-task .task-actions { max-width: 380px; }
+.connection-suggestion { display: block; margin-top: 6px; color: var(--accent); font-size: 14px; }
+#guide-choice { width: 100%; min-height: 44px; max-width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--panel); font: 14px var(--font); }
+@media (max-width: 700px) {
+  .connection-task { gap: 8px; }
+  .connection-task h2 { font-size: 20px; }
+  .connection-task .task-actions { gap: 6px 12px; }
+  .connection-task .task-actions .btn.primary { padding-inline: 16px; }
+  .connection-task .text-btn { min-height: 36px; }
+}
 .inspector-sheet { font-family: var(--results-font); padding: 24px; max-height: min(600px, 68dvh); }
 .inspector-sheet h2 { font: 600 25px/1.25 var(--results-font); margin-bottom: 10px; }
 .inspector-sheet .settings-help { font-size: 15px; margin: 0 0 18px; }

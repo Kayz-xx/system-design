@@ -60,6 +60,9 @@
 [data-world="software"] .node-controls .node-name { font-weight: 500; }
 [data-world="software"] .node-edit-hint { font-weight: 400; }
 [data-world="software"] .node-controls:disabled { background: var(--panel); border-bottom-color: var(--line); }
+[data-world="software"] .node.placing .artifact { color: var(--accent); filter: none; }
+[data-world="software"] .node.placing .node-controls { border-bottom-color: var(--accent); }
+[data-world="software"] #guide-choice { border: 0; border-bottom: 1px solid var(--control-border); border-radius: 0; background: var(--panel-2); }
 [data-world="software"] .traffic .node-name { font: 500 17px/1.3 var(--font); }
 [data-world="software"] .traffic .node-sub { font: 14px/1.4 var(--font); color: var(--ink-2); }
 [data-world="software"] .port { border-radius: 0; width: 12px; height: 12px; opacity: 1; background: var(--panel); }
