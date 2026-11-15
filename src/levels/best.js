@@ -1,13 +1,13 @@
 // The cheapest design that passes every test of a scene, found by searching the designs a learner can build
 // from the palette (same blocks, same setting steps). Pure and deterministic. The results are stored in
 // best-designs.js so the browser never has to search; best.test.js checks the stored answers are still right.
-import { designCost, simulate } from '../sim/sim.js';
+import { blockCost, designCost, simulate } from '../sim/sim.js';
 import { suite } from './grade.js';
 import { LEVELS } from './levels.js';
 
 const range = (from, to, step) => { const out = []; for (let v = from; v <= to + 1e-9; v += step) out.push(v); return out; };
 
-// Every candidate design for a scene, in software units, each with its cost.
+// Every candidate design for a scene within its budget, in software units, each with its cost.
 export function candidates(level, world) {
   const tests = suite(level, world);
   const starterDb = ((level.starter || level.design).blocks || []).find((b) => b.type === 'database');
@@ -36,8 +36,13 @@ export function candidates(level, world) {
     }
   }
 
+  // Nothing over budget can be accepted, so the search skips it early. That keeps the capstone, which
+  // uses every block, to a few hundred thousand designs.
+  const budget = level.scenes[world].scenario.targets.cost + 1e-9;
+  const price = (b) => (b ? blockCost(b) : 0);
   const out = [];
   for (const s of servers) for (const c of caches) for (const q of queues) for (const db of dbs) {
+    if (price(s) + (s.copies > 1 ? 0.05 : 0) + price(c) + price(q) + price(db) > budget) continue;
     const blocks = [], wires = [];
     if (s.copies > 1) { blocks.push({ id: 'lb1', type: 'loadBalancer', name: 'Load balancer' }); wires.push(['traffic', 'lb1'], ['lb1', 's1']); }
     else wires.push(['traffic', 's1']);

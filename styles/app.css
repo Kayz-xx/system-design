@@ -279,3 +279,40 @@ h1 { margin: 0; font: 500 clamp(24px, 2.6vw, 34px)/1.2 var(--display); letter-sp
   body:has(.inspector-sheet) .side { min-height: var(--task-height); }
   .inspector-sheet { bottom: 8px; max-height: 62dvh; padding: 20px; }
 }
+
+/* Topic picker: the first screen, and a header button away later. */
+.topics-open { font-size: 13px; }
+.topics { position: fixed; inset: 0; z-index: 30; overflow: auto; background: var(--bg); padding: 40px 5vw 60px; }
+.topics-panel { position: relative; max-width: 1040px; margin: 0 auto; }
+.topics-panel .close { position: absolute; right: 0; top: 0; }
+.topics-panel h1 { margin-bottom: 8px; }
+.topics-lead { max-width: 60ch; color: var(--ink-2); font-size: 15px; line-height: 1.55; margin: 0 0 26px; }
+.topic-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
+.topic-card { display: flex; flex-direction: column; gap: 10px; text-align: left; padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); color: var(--ink); cursor: pointer; font: inherit; }
+.topic-card:hover, .topic-card:focus-visible { border-color: var(--accent); background: var(--accent-soft); }
+.topic-card:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.topic-top { display: flex; justify-content: space-between; align-items: center; }
+.topic-top .stars { color: var(--warn); font-size: 13px; letter-spacing: 1px; }
+.topic-name { font: 600 24px/1.15 var(--display); letter-spacing: -.02em; }
+.topic-idea { font-size: 14px; line-height: 1.5; color: var(--ink-2); }
+.topic-tool { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 12px; color: var(--ink-2); }
+.topic-tool > span:not([aria-hidden]) { padding: 3px 8px; border-radius: 999px; background: var(--panel-2); }
+.topic-pair { display: grid; gap: 4px; font-size: 13px; color: var(--ink); }
+.topic-pair > span { display: grid; grid-template-columns: 82px 1fr; gap: 8px; }
+.topic-pair i { font-style: normal; font-size: 11px; color: var(--ink-3); padding-top: 2px; }
+.topic-trade { font-size: 12px; line-height: 1.45; color: var(--ink-3); }
+.topic-trade i { font-style: normal; font-weight: 600; color: var(--ink-2); margin-right: 4px; }
+.topic-go { margin-top: auto; font-size: 13px; font-weight: 600; color: var(--accent); }
+.topic-card.capstone { margin-top: 14px; width: 100%; border-width: 2px; border-color: var(--ink-3); }
+.topic-card.capstone .topic-name { font-size: 28px; }
+.topic-card.capstone.early .topic-go { color: var(--ink-3); }
+.topic-box { margin: 0 0 12px; padding: 10px 12px; border-left: 3px solid var(--accent); background: var(--accent-soft); border-radius: 0 8px 8px 0; }
+.topic-box p { margin: 4px 0; color: var(--ink); }
+.topic-box p.muted { color: var(--ink-2); }
+/* Why it worked: one line per principle, with the run's numbers. */
+.why-worked { margin: 12px 0; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel-2); }
+.why-worked p { margin: 4px 0 8px; }
+.why-worked ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.why-worked li { display: grid; gap: 2px; font-size: 13px; line-height: 1.5; color: var(--ink-2); }
+.why-worked li b { color: var(--ink); font-size: 13px; }
+@media (max-width: 700px) { .topics { padding: 24px 16px 40px; } .topic-name { font-size: 21px; } }

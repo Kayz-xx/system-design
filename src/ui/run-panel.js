@@ -1,5 +1,6 @@
 // The run panel: target checks, time scrubber and three charts with a shared crosshair.
 import { S, W, world, run, runScenario, esc, fmtN, fmt1, fmtPct } from './state.js';
+import { SCALE } from '../levels/levels.js';
 
 function niceMax(v) {
   if (v <= 0) return 1;
@@ -56,7 +57,7 @@ export function renderRun() {
     <details class="analysis-drawer" id="analysis-drawer"><summary>${r.stale ? 'Previous run · your design has changed' : 'Look at the numbers'} ↗</summary><div class="analysis-content">
       <div class="label">${r.stale ? 'Previous run' : r.label ? esc(r.label) : 'Run results'}</div>
       ${r.stale ? '<p class="hint" role="status">Your design has changed. These charts show the previous run. Make a new prediction to test your edits.</p>' : ''}
-      <div class="checks">${check(res.checks.errors, Wd.checks.errors, fmtPct(res.errorRate), fmtPct(sc.targets.errorRate))}${check(res.checks.slow, Wd.checks.slow(sc.latencyTargetMs), fmtPct(res.slowShare), fmtPct(sc.targets.slowShare))}${check(res.checks.cost, 'Cost', Wd.cost(res.costPerHour), Wd.cost(sc.targets.cost))}</div>
+      <div class="checks">${check(res.checks.errors, Wd.checks.errors, fmtPct(res.errorRate), fmtPct(sc.targets.errorRate))}${check(res.checks.slow, Wd.checks.slow(sc.latencyTargetMs), fmtPct(res.slowShare), fmtPct(sc.targets.slowShare))}${check(res.checks.cost, 'Cost', Wd.cost(res.costPerHour), Wd.cost(sc.targets.cost))}${sc.targets.drain ? check(res.checks.drained, world() === 'cafe' ? 'Tickets left at closing' : 'Writes left queued', world() === 'cafe' ? fmtN(res.backlogAtClose / SCALE) : fmtN(res.backlogAtClose), '0') : ''}</div>
       <div class="readout" id="readout"></div><div class="charts">
         <div class="chart" data-chart="traffic"><h4>${Wd.charts.traffic}</h4><div class="plot"></div></div>
         <div class="chart" data-chart="latency"><h4>${Wd.charts.latency}</h4><div class="plot"></div></div>

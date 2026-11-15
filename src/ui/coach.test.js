@@ -203,6 +203,9 @@ test('an accepted submission is compared with the best possible cost', () => {
     assert.ok(html.includes('$100/h') && html.includes('$90/h'));
     assert.ok(html.includes('11% more than the best'));
     assert.ok(html.includes('A shared line, 4 baristas making 2 a minute each'));
+    assert.ok(html.includes('aria-label="Why it worked"'));
+    assert.ok(html.includes('Redundancy · one barista to spare'));
+    assert.ok(html.includes('one of your 5 baristas went home for 90 minutes. The other 4 still serve 7.2 a minute'), html.match(/Redundancy[^<]*<\/b><span>([^<]*)/)?.[1]);
     Object.assign(S.designs.l2.cafe.blocks[1], { copies: 4, capacity: 100 });
     submit('l2', 'cafe', S.designs.l2.cafe);
     html = render();

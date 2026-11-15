@@ -46,6 +46,51 @@ function renderMission() {
   document.getElementById('mission-sub').textContent = `${base} ${unit}${shock}. ${cafe ? 'Make the morning work.' : 'Build a system that holds up.'}`;
 }
 
+/* ---------- Topic picker ---------- */
+// The first screen: choose the idea to learn, then play its chapter. The capstone combines all four.
+export function topicCardsHtml() {
+  const topics = LEVELS.filter((l) => !l.capstone), cap = LEVELS.find((l) => l.capstone);
+  const done = (l) => { const st = stars(l.id); return st[0] && st[1]; };
+  const starsOf = (l) => { const st = stars(l.id); return `<span class="stars" aria-label="${st.filter(Boolean).length} of 3 stars">${st.map((x) => (x ? '★' : '☆')).join('')}</span>`; };
+  const card = (l) => `<button class="topic-card${done(l) ? ' done' : ''}" data-topic="${l.id}">
+      <span class="topic-top"><span class="chapter-number">${String(l.n).padStart(2, '0')}</span>${starsOf(l)}</span>
+      <b class="topic-name">${esc(l.topic.name)}</b>
+      <span class="topic-idea">${esc(l.topic.idea.software)}</span>
+      <span class="topic-pair"><span><i>In the café</i>${esc(l.topic.tool.cafe)}</span><span><i>In software</i>${esc(l.topic.tool.software)}</span></span>
+      <span class="topic-trade"><i>Trade-off</i> ${esc(l.topic.tradeoff.software)}</span>
+      <span class="topic-go">${done(l) ? 'Play again' : stars(l.id).some(Boolean) ? 'Continue' : 'Start'} · ${esc(l.name)} →</span>
+    </button>`;
+  const finished = topics.filter(done).length;
+  const capCard = cap ? `<button class="topic-card capstone${finished === topics.length ? '' : ' early'}" data-topic="${cap.id}">
+      <span class="topic-top"><span class="eyebrow">Capstone · all four topics</span>${starsOf(cap)}</span>
+      <b class="topic-name">${esc(cap.topic.name)}</b>
+      <span class="topic-idea">${esc(cap.topic.idea.software)}</span>
+      <span class="topic-tool">${cap.principles.map((p) => `<span>${esc(topics.find((t) => t.topic.id === p).topic.name)}</span>`).join('<span aria-hidden="true">+</span>')}</span>
+      <span class="topic-go">${finished === topics.length ? 'Ready when you are' : `Best after the four topics · ${finished} of ${topics.length} done`} · ${esc(cap.name)} →</span>
+    </button>` : '';
+  return `<div class="topic-grid">${topics.map(card).join('')}</div>${capCard}`;
+}
+
+function renderTopics() {
+  const el = document.getElementById('topics');
+  el.hidden = !S.topicsOpen;
+  document.getElementById('app').inert = S.topicsOpen;
+  if (!S.topicsOpen) return;
+  el.innerHTML = `<section class="topics-panel" role="dialog" aria-modal="true" aria-labelledby="topics-title">
+      ${S.picked ? '<button class="icon-btn close" id="topics-close" aria-label="Back to the chapter">×</button>' : ''}
+      <p class="eyebrow">Little Systems Café</p>
+      <h1 id="topics-title">What do you want to learn?</h1>
+      <p class="topics-lead">Each topic is one idea from system design. You make it work in a coffee shop first, then build the same thing as software, and see why it held.</p>
+      ${topicCardsHtml()}
+    </section>`;
+}
+
+function closeTopics() {
+  S.topicsOpen = false;
+  renderTopics();
+  document.getElementById('topics-open').focus({ preventScroll: true });
+}
+
 let cameraReady = false;
 function fitFloor(force = false) {
   const view = document.getElementById('board-scroll') || document.querySelector('.board-scroll');
@@ -180,7 +225,7 @@ function renderAll() {
   document.documentElement.setAttribute('data-world', world());
   fx.playing = isPlaying() && !run().paused;
   invalidateColors();
-  renderTabs(); renderPalette(); renderBoard(); renderOverlay(); renderRun(); renderSide(); updateWorkbench();
+  renderTabs(); renderPalette(); renderBoard(); renderOverlay(); renderRun(); renderSide(); updateWorkbench(); renderTopics();
   requestAnimationFrame(() => { if (!cameraReady) fitFloor(); });
   if (focusedId) document.getElementById(focusedId)?.focus({ preventScroll: true });
 }
@@ -336,6 +381,18 @@ function switchScene(name, animate) {
 document.addEventListener('click', (e) => {
   const action = e.target.closest('button');
   if (action && action.disabled) return;
+  const topic = e.target.closest('[data-topic]');
+  if (topic) {
+    cancelSceneTransition(); cancelDrag(); endDesignEdit();
+    S.level = topic.dataset.topic; S.sel = null; S.hoverT = null; S.banner = null; S.topicsOpen = false; S.picked = true;
+    // A fresh chapter opens on its brief, which leads with the idea being learned.
+    if (!S.labPhase[key()] || S.labPhase[key()] === 'build') S.labPhase[key()] = attempts().length ? 'build' : 'brief';
+    resetFx(); renderAll();
+    document.querySelector('#side .sheet, #side .btn.primary')?.focus({ preventScroll: true });
+    return;
+  }
+  if (action?.id === 'topics-open' || action?.hasAttribute('data-open-topics')) { if (!isPlaying()) { S.topicsOpen = true; renderTopics(); document.querySelector('.topic-card')?.focus(); } return; }
+  if (action?.id === 'topics-close') { closeTopics(); return; }
   const lvBtn = e.target.closest('[data-level]');
   if (lvBtn) {
     cancelSceneTransition(); cancelDrag(); endDesignEdit();
@@ -567,6 +624,7 @@ document.addEventListener('pointerup', (e) => {
 });
 
 document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && S.topicsOpen) { if (S.picked) closeTopics(); return; }
   if (e.key === 'Escape') { cancelDrag(); if (S.sel || S.labPhase[key()] !== 'build') setTask('build'); return; }
   const editing = e.target.closest('input, select, textarea, [contenteditable="true"]');
   if (!editing && (e.ctrlKey || e.metaKey) && !e.altKey) {

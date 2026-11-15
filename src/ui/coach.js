@@ -8,6 +8,7 @@ import { S, L, W, world, key, scene, design, run, attempts, nameOf, stars, esc, 
 import { FIELDS } from './worlds.js';
 import { bestHtml } from './best-panel.js';
 import { mapHtml } from './survival-panel.js';
+import { whyHtml } from './why-panel.js';
 
 export const predScale = () => scene().predict.scale || 1;
 export const predError = (g, a) => {
@@ -137,6 +138,14 @@ function inspectorHtml() {
   return `${f}<div class="btn-row settings-cost"><span>Cost per hour <b id="block-cost">${Wd.cost(blockCost(b))}</b></span><button class="text-btn" id="del-block">Remove</button></div>`;
 }
 
+// The idea this chapter teaches, at the top of the brief, in the scene's words.
+export function topicHtml(lv, w) {
+  const t = lv.topic;
+  if (!t) return '';
+  const name = lv.capstone && w === 'cafe' ? lv.scenes.cafe.title : t.name;
+  return `<div class="topic-box"><div class="label">${lv.capstone ? 'Capstone' : 'Topic'} · ${esc(name)}</div><p>${esc(t.idea[w])}</p><p class="muted"><b>${esc(w === 'cafe' ? 'You will try' : 'The tool')}:</b> ${esc(t.tool[w])}. <b>Trade-off:</b> ${esc(t.tradeoff[w])}</p></div>`;
+}
+
 // One task surface. Nothing else competes with the floor until the learner asks.
 const closeTask = '<button class="icon-btn close" id="close-task" aria-label="Back to the floor">×</button>';
 const shell = (label, title, body, id = '', extra = '') => `<section class="sheet ${extra}" ${id ? `id="${id}"` : ''} aria-label="${label}" tabindex="-1">${closeTask}<h2>${title}</h2>${body}</section>`;
@@ -150,7 +159,7 @@ export function renderSide() {
   if (playing) {
     html = `<section class="task" aria-label="Running experiment"><div class="task-copy"><div class="eyebrow">${r.paused ? 'Playback paused' : 'Watch the flow'}</div><h2>${r.paused ? 'Take it at your own pace.' : cafe ? 'The doors are open.' : 'Your system is running.'}</h2><p>${r.paused ? 'Play the flow, or step through the important moments.' : cafe ? 'Watch customers arrive, wait, and leave with their coffee.' : 'Follow requests as they arrive, queue, and complete.'}</p></div><div class="task-actions"><button class="btn small" id="toggle-playback">${r.paused ? cafe ? '▶ Play customers' : '▶ Play requests' : 'Ⅱ Pause'}</button>${r.paused ? '<button class="text-btn" id="step-flow">Next moment →</button>' : ''}<button class="text-btn" id="skip-run">Results →</button></div></section>`;
   } else if (phase === 'brief') {
-    html = shell('Brief', esc(sn.title), `<p>${esc(sn.brief)}</p><p><b>${esc(sn.goal)}</b></p><details><summary>Limits &amp; targets</summary><ul class="constraints">${(sn.constraints || []).map((c) => `<li>${esc(c)}</li>`).join('')}</ul><dl class="targets"><dt>${W().checks.errors}</dt><dd>≤ ${fmtPct(sn.scenario.targets.errorRate)}</dd><dt>Long waits</dt><dd>≤ ${fmtPct(sn.scenario.targets.slowShare)} over ${W().latTarget(sn.scenario.latencyTargetMs)}</dd><dt>Budget</dt><dd>${W().cost(sn.scenario.targets.cost)}</dd></dl></details>${w === 'software' ? `<details><summary>From café to software</summary><dl class="pairs">${lv.translate.map(([a,b]) => `<dt class="from">${esc(a)}</dt><span class="arrow">→</span><dd class="to">${esc(b)}</dd>`).join('')}</dl><a href="${lv.reading.url}" target="_blank" rel="noopener">Read more in the System Design Primer ↗</a></details>` : ''}`);
+    html = shell('Brief', esc(sn.title), `${topicHtml(lv, w)}<p>${esc(sn.brief)}</p><p><b>${esc(sn.goal)}</b></p><details><summary>Limits &amp; targets</summary><ul class="constraints">${(sn.constraints || []).map((c) => `<li>${esc(c)}</li>`).join('')}</ul><dl class="targets"><dt>${W().checks.errors}</dt><dd>≤ ${fmtPct(sn.scenario.targets.errorRate)}</dd><dt>Long waits</dt><dd>≤ ${fmtPct(sn.scenario.targets.slowShare)} over ${W().latTarget(sn.scenario.latencyTargetMs)}</dd><dt>Budget</dt><dd>${W().cost(sn.scenario.targets.cost)}</dd></dl></details>${w === 'software' ? `<details><summary>From café to software</summary><dl class="pairs">${lv.translate.map(([a,b]) => `<dt class="from">${esc(a)}</dt><span class="arrow">→</span><dd class="to">${esc(b)}</dd>`).join('')}</dl><a href="${lv.reading.url}" target="_blank" rel="noopener">Read more in the System Design Primer ↗</a></details>` : ''}<div class="btn-row"><button class="btn primary" id="return-build">${cafe ? 'Start on the floor →' : 'Start building →'}</button></div>`);
   } else if (S.sel) {
     const title = S.sel.kind === 'block' ? esc(nameOf(d, S.sel.id)) : 'A connection';
     html = shell('Equipment settings', S.sel.kind === 'block' ? `Adjust ${title}` : title, inspectorHtml() + '<button class="btn primary" id="done-edit">Done →</button>', '', `inspector-sheet ${S.sel.kind === 'block' && d.blocks.find((b) => b.id === S.sel.id)?.x > 500 ? 'inspector-left' : ''}`);
@@ -183,8 +192,8 @@ export function renderSide() {
 }
 
 const checkWords = (w) => (w === 'cafe'
-  ? { errors: 'customers walked out', slow: 'waits ran too long', cost: 'over budget' }
-  : { errors: 'too many errors', slow: 'too many slow requests', cost: 'over budget' });
+  ? { errors: 'customers walked out', slow: 'waits ran too long', cost: 'over budget', drained: 'tickets were left on the rail at closing' }
+  : { errors: 'too many errors', slow: 'too many slow requests', cost: 'over budget', drained: 'writes were still queued at the end' });
 
 function submitHtml(lv, w, playing) {
   const n = 1 + (lv.tests || []).length, g = S.subGuess[key()] ?? '';
@@ -223,7 +232,7 @@ function submissionHtml(lv, w, sub) {
   if (sub.accepted && w === 'cafe') next = `<button class="btn primary" id="to-software">See it as software →</button>`;
   else if (sub.accepted) {
     const unfinished = nextChapter();
-    next = !unfinished ? `<span class="right">All ${LEVELS.length} chapters complete. You have practised ${esc(LEVELS.map((l) => l.concept.toLowerCase()).join(', '))}.</span>`
+    next = !unfinished ? `<span class="right">All ${LEVELS.length} chapters complete. You have practised ${esc(LEVELS.filter((l) => l.topic && !l.capstone).map((l) => l.topic.name.toLowerCase()).join(', '))}, and put them together.</span>`
       : unfinished.id === lv.id ? '<button class="btn primary" data-scene="cafe">Finish the coffee shop →</button>'
         : `<button class="btn primary" data-level="${unfinished.id}">Continue: ${esc(unfinished.name)} →</button>`;
   }
@@ -234,8 +243,9 @@ function submissionHtml(lv, w, sub) {
       <p>${sub.passedCount} of ${sub.total} passed. ${guessed}</p>
       ${sub.failed ? `<p><b>${esc(sub.failed.name)}.</b> ${esc(sub.failed.story)} <span class="wrong">${esc(why(sub.failed))}.</span></p>` : ''}
       ${sub.failed ? whyFailedHtml(sub, w) : ''}
+      ${sub.accepted ? whyHtml(lv, w) : ''}
       ${sub.accepted ? bestHtml(lv.id, w, sub.results[0].log.result.costPerHour) : ''}
-      <div class="btn-row">${next || `<button class="btn primary" id="return-build">${w === 'cafe' ? 'Back to the floor →' : 'Edit the system →'}</button>`}<button class="text-btn" id="map-open">Where does it hold? →</button>${sub.failed ? `<button class="text-btn" data-watch="${esc(sub.failed.id)}">${w === 'cafe' ? 'Watch this morning' : 'Watch this scenario'}</button>` : ''}</div>
+      <div class="btn-row">${next || `<button class="btn primary" id="return-build">${w === 'cafe' ? 'Back to the floor →' : 'Edit the system →'}</button>`}<button class="text-btn" id="map-open">Where does it hold? →</button>${sub.accepted && w === 'software' ? '<button class="text-btn" data-open-topics>All topics</button>' : ''}${sub.failed ? `<button class="text-btn" data-watch="${esc(sub.failed.id)}">${w === 'cafe' ? 'Watch this morning' : 'Watch this scenario'}</button>` : ''}</div>
       <details><summary>${w === 'cafe' ? 'Open your notebook' : 'Review test results'}</summary><ol class="tests">${sub.results.map((t) => `<li class="${t.passed ? 'ok' : 'bad'}">
           <span class="mark" aria-label="${t.passed ? 'Passed' : 'Failed'}">${t.passed ? '✓' : '✗'}</span>
           <span><b>Test ${t.n}</b> · ${esc(t.name)}${t.hidden ? '' : ` <span class="muted">(sample)</span>`}${t.passed ? '' : `<small>${esc(why(t))}</small>`}</span>

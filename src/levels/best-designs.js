@@ -316,5 +316,165 @@ export const BEST = {
         ]
       }
     }
+  },
+  'l5': {
+    cafe: {
+      cost: 1.8,
+      design: {
+        blocks: [
+          {
+            id: 'lb1',
+            type: 'loadBalancer',
+            name: 'Load balancer'
+          },
+          {
+            id: 's1',
+            type: 'server',
+            name: 'Server',
+            capacity: 250,
+            copies: 5,
+            queueLimit: 5000
+          },
+          {
+            id: 'db1',
+            type: 'database',
+            names: {
+              cafe: 'Espresso machine',
+              software: 'Database'
+            },
+            readCapacity: 300,
+            writeCapacity: 50,
+            replicas: 0,
+            queueLimit: 5000,
+            x: 720,
+            y: 170,
+            name: 'Database'
+          },
+          {
+            id: 'c1',
+            type: 'cache',
+            name: 'Cache',
+            size: 'small'
+          },
+          {
+            id: 'q1',
+            type: 'queue',
+            name: 'Queue',
+            workers: 1,
+            workerRate: 100,
+            queueLimit: 5000
+          }
+        ],
+        wires: [
+          [
+            'traffic',
+            'lb1'
+          ],
+          [
+            'lb1',
+            's1'
+          ],
+          [
+            's1',
+            'db1'
+          ],
+          [
+            's1',
+            'c1'
+          ],
+          [
+            'c1',
+            'db1'
+          ],
+          [
+            's1',
+            'q1'
+          ],
+          [
+            'q1',
+            'db1'
+          ]
+        ]
+      }
+    },
+    software: {
+      cost: 2.05,
+      design: {
+        blocks: [
+          {
+            id: 'lb1',
+            type: 'loadBalancer',
+            name: 'Load balancer'
+          },
+          {
+            id: 's1',
+            type: 'server',
+            name: 'Server',
+            capacity: 300,
+            copies: 5,
+            queueLimit: 500
+          },
+          {
+            id: 'db1',
+            type: 'database',
+            names: {
+              cafe: 'Espresso machine',
+              software: 'Database'
+            },
+            readCapacity: 300,
+            writeCapacity: 50,
+            replicas: 0,
+            queueLimit: 5000,
+            x: 720,
+            y: 170,
+            name: 'Database'
+          },
+          {
+            id: 'c1',
+            type: 'cache',
+            name: 'Cache',
+            size: 'small'
+          },
+          {
+            id: 'q1',
+            type: 'queue',
+            name: 'Queue',
+            workers: 1,
+            workerRate: 100,
+            queueLimit: 5000
+          }
+        ],
+        wires: [
+          [
+            'traffic',
+            'lb1'
+          ],
+          [
+            'lb1',
+            's1'
+          ],
+          [
+            's1',
+            'db1'
+          ],
+          [
+            's1',
+            'c1'
+          ],
+          [
+            'c1',
+            'db1'
+          ],
+          [
+            's1',
+            'q1'
+          ],
+          [
+            'q1',
+            'db1'
+          ]
+        ]
+      }
+    }
   }
 };

@@ -136,6 +136,7 @@ export function runFacts(design, scenario, log, world) {
     `Share of ${w.lost}: ${pct(r.errorRate)} (target ${pct(sc.targets.errorRate)} or less) — ${r.checks.errors ? 'met' : 'missed'}.`,
     `Share of ${w.slow} over ${w.latency(sc.latencyTargetMs)}: ${pct(r.slowShare)} (target ${pct(sc.targets.slowShare)} or less) — ${r.checks.slow ? 'met' : 'missed'}.`,
     `Cost: ${w.cost(r.costPerHour)} (budget ${w.cost(sc.targets.cost)}) — ${r.checks.cost ? 'met' : 'missed'}.`,
+    ...(sc.targets.drain ? [`Writes still queued at the end: ${fmtN(r.backlogAtClose)} (target 0) — ${r.checks.drained ? 'met' : 'missed'}.`] : []),
     r.firstFailure ? `First trouble: ${name(r.firstFailure.block)} at ${w.clock(r.firstFailure.t)}.` : 'Nothing got overloaded.'
   ];
   return { lines, summary };

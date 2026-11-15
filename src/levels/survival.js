@@ -6,7 +6,7 @@
 // tests include that corner. The map explains the verdict; it does not change it.
 import { simulate } from '../sim/sim.js';
 import { LEVELS } from './levels.js';
-import { suite } from './grade.js';
+import { suite, testScenario } from './grade.js';
 
 // Time knobs shift a morning along without making it harder, so tests that differ only in timing
 // still sit on the map at their size and length.
@@ -30,13 +30,25 @@ export function paramsOf(sc) {
   return p;
 }
 
-// The scenario for one cell: the sample morning with the map's knobs set.
-export function scenarioAt(level, world, knobs) {
+// The morning every cell starts from: the sample, or the test the map names in `from`.
+function startOf(level, world) {
   const sample = level.scenes[world].scenario;
+  const t = level.map.from && level.tests.find((x) => x.id === level.map.from);
+  return t ? testScenario(sample, t.change) : sample;
+}
+
+// The knobs every cell shares: the starting morning's, with the map's fixed values on top.
+const referenceOf = (level, world) => ({ ...paramsOf(startOf(level, world)), ...level.map.fixed });
+
+// The scenario for one cell: the starting morning with the map's knobs set.
+export function scenarioAt(level, world, knobs) {
+  const sample = startOf(level, world);
   const p = { ...paramsOf(sample), ...level.map.fixed, ...knobs };
   const sc = JSON.parse(JSON.stringify(sample));
-  sc.base = split(p.base, sample.base);
-  if (p.spikeLoad !== undefined) sc.spike = { t: p.spikeT ?? 30, dur: p.spikeDur, ...split(p.spikeLoad, sample.spike || sample.base) };
+  // With `reads`, a load knob moves only the reads and keeps the writes as they are.
+  const load = (total, like) => (level.map.reads ? { reads: total - like.writes, writes: like.writes } : split(total, like));
+  sc.base = load(p.base, sample.base);
+  if (p.spikeLoad !== undefined) sc.spike = { t: p.spikeT ?? 30, dur: p.spikeDur, ...load(p.spikeLoad, sample.spike || sample.base) };
   if (p.failDur !== undefined) sc.serverFail = { t: p.failT ?? 10, dur: p.failDur };
   if (sample.cacheFlush || level.map.y.dim === 'flush' || level.map.x.dim === 'flush') {
     if (p.flush) sc.cacheFlush = { t: p.flushT ?? sample.cacheFlush.t, warm: sample.cacheFlush.warm };
@@ -108,11 +120,13 @@ export function survivalMap(design, levelId, world) {
     }
   }
   const at = (xv, yv) => cells.find((c) => c.x === xv && c.y === yv);
-  // Tests sit on the map when every knob that is not on an axis matches the map's fixed values (timing aside).
+  // Tests sit on the map when every knob that is not on an axis matches the cells' (timing aside).
+  const ref = referenceOf(level, world);
   const tests = suite(level, world).map((t) => {
     const p = paramsOf(t.scenario);
+    const same = (k) => k === x.dim || k === y.dim || TIME_DIMS.has(k) || p[k] === ref[k];
     const onMap = p[x.dim] !== undefined && p[y.dim] !== undefined && xs.includes(p[x.dim]) && ys.includes(p[y.dim])
-      && Object.entries(level.map.fixed).every(([k, v]) => TIME_DIMS.has(k) || p[k] === v);
+      && Object.keys({ ...ref, ...p }).every(same);
     return { id: t.id, n: t.n, name: t.name, hidden: t.hidden, x: onMap ? p[x.dim] : null, y: onMap ? p[y.dim] : null, passed: simulate(design, t.scenario).result.passed };
   });
   const worst = at(xs[xs.length - 1], ys[ys.length - 1]);

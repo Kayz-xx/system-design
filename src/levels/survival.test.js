@@ -19,7 +19,8 @@ const GOOD = {
   l1: { blocks: [srv('s1', 250, 1, 5000)], wires: [['traffic', 's1']] },
   l2: { blocks: [lb, srv('s', 100, 4)], wires: [['traffic', 'lb'], ['lb', 's']] },
   l3: { blocks: [srv('s', 1200, 1, 2000), cache, db({ replicas: 3 })], wires: [['traffic', 's'], ['s', 'c'], ['c', 'db1'], ['s', 'db1']] },
-  l4: l4(10000)
+  l4: l4(10000),
+  l5: { blocks: [lb, srv('s', 300, 5, 5000), cache, db(), queue(10000)], wires: [['traffic', 'lb'], ['lb', 's'], ['s', 'c'], ['c', 'db1'], ['s', 'db1'], ['s', 'q'], ['q', 'db1']] }
 };
 
 test('an accepted design survives the whole map, and the map agrees with Submit on the worst corner', () => {
@@ -50,7 +51,7 @@ test('monotone: any design that survives the worst corner survives every cell', 
   for (const lv of LEVELS) {
     const w = 'software', budget = lv.scenes[w].scenario.targets.cost;
     const pool = candidates(lv, w).filter((c) => c.cost <= budget + 1e-9);
-    const step = Math.max(1, Math.floor(pool.length / 60));
+    const step = Math.max(1, Math.floor(pool.length / (lv.capstone ? 25 : 60)));
     for (let i = 0; i < pool.length; i += step) {
       const m = survivalMap(pool[i].design, lv.id, w);
       if (m.worst.passed) assert.equal(m.survived, m.total, `${lv.id} candidate ${i}`);

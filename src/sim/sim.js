@@ -331,11 +331,15 @@ function simulate(d, sc) {
   const errorRate = totEmit > 0 ? totDrop / totEmit : 0;
   const slowShare = totDone > 0 ? totSlow / totDone : 0;
   const costPerHour = designCost(d);
+  const backlogAtClose = queues.reduce((s, q) => s + qq[q.id], 0);
   const checks = {
     errors: errorRate <= sc.targets.errorRate,
     slow: slowShare <= sc.targets.slowShare,
     cost: costPerHour <= sc.targets.cost + 1e-9
   };
+  // Optional: every queued write must be done by closing. Without it a queue whose workers are slower than
+  // the writes arriving still passes, because the backlog only grows and nothing is dropped.
+  if (sc.targets.drain) checks.drained = backlogAtClose <= 0.5;
   const first = events.find((e) => e.type === 'saturated' || e.type === 'down' || (e.type === 'dropping' && byId[e.block] && byId[e.block].type === 'queue'));
   const firstFailure = first ? { block: first.block, t: first.t, load: first.load } : null;
 
@@ -361,7 +365,7 @@ function simulate(d, sc) {
 
   return {
     ticks, events, metrics,
-    result: { errorRate, slowShare, costPerHour, passed: checks.errors && checks.slow && checks.cost, checks, firstFailure }
+    result: { errorRate, slowShare, costPerHour, passed: Object.values(checks).every(Boolean), checks, firstFailure, backlogAtClose }
   };
 }
 

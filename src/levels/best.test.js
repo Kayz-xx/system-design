@@ -12,8 +12,11 @@ for (const l of LEVELS) {
       const stored = BEST[l.id][w];
       assert.ok(stored, 'a best design exists');
       assert.equal(grade(stored.design, l.id, w).accepted, true);
-      const found = findBest(l.id, w);
-      assert.equal(found.cost, stored.cost, 'run node src/levels/make-best.js to regenerate');
+      // The capstone search takes minutes, so it is checked only by make-best.js, not on every test run.
+      if (!l.capstone) {
+        const found = findBest(l.id, w);
+        assert.equal(found.cost, stored.cost, 'run node src/levels/make-best.js to regenerate');
+      }
       assert.ok(stored.cost <= l.scenes[w].scenario.targets.cost + 1e-9, 'within budget');
       assert.ok(describe(stored.design, w, 50).length > 0);
     });

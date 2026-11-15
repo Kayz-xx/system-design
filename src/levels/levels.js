@@ -9,14 +9,22 @@
 // One hidden test is always the worst corner of the constraints: the simulator is monotone (more traffic or a
 // longer outage never shortens a line), so a design that survives it survives every easier morning.
 // `map` is the survival map (see survival.js): the two knobs of the Constraints that matter, in software
-// units, swept from easy to hard. Everything else is held at its worst (`fixed`).
+// units, swept from easy to hard. Everything else is held at its worst (`fixed`). With `from`, the map starts
+// from that test instead of the sample; with `reads`, a load axis changes reads only and keeps the writes.
+// `topic` is what the topic picker shows; `principles` are the lessons the Why-it-worked card explains.
 
 const PRIMER = 'https://github.com/donnemartin/system-design-primer';
 const SCALE = 50;
 
 const LEVELS = [
   {
-    id: 'l1', n: 1, name: 'Morning rush', concept: 'Saturation', difficulty: 'Easy',
+    id: 'l1', n: 1, name: 'Morning rush', concept: 'Saturation', difficulty: 'Easy', principles: ['scaling'],
+    topic: {
+      id: 'scaling', name: 'Scaling',
+      idea: { cafe: 'One barista has a top speed. When more people walk in than they can serve, the line grows until the rush is over.', software: 'Every server has a ceiling. When requests arrive faster than it serves them, a queue builds and latency climbs.' },
+      tool: { cafe: 'A faster barista', software: 'More capacity' },
+      tradeoff: { cafe: 'You pay for that speed all day, even when the shop is quiet.', software: 'You pay for peak capacity every hour, even when traffic is low.' }
+    },
     map: { x: { dim: 'spikeDur', from: 10, to: 40, step: 2 }, y: { dim: 'spikeLoad', from: 100, to: 240, step: 10 }, fixed: { base: 60, spikeT: 30 } },
     reading: { label: 'Latency vs throughput', url: PRIMER + '#latency-vs-throughput' },
     translate: [
@@ -29,7 +37,7 @@ const LEVELS = [
     },
     tests: [
       { id: 'quiet', name: { cafe: 'A rainy Tuesday', software: 'A quiet day' }, story: { cafe: 'Only 0.8 customers a minute, and no train.', software: '40 requests a second and no spike.' }, change: { base: { reads: 40, writes: 0 }, spike: null } },
-      { id: 'two-trains', name: { cafe: 'Two trains at once', software: 'A longer spike' }, story: { cafe: 'Two trains arrive together: 4.8 customers a minute for 40 minutes.', software: '240 requests a second for 40 seconds.' }, change: { spike: { t: 30, dur: 40, reads: 240, writes: 0 } } },
+      { id: 'worst', name: { cafe: 'Two trains at once', software: 'A longer spike' }, story: { cafe: 'Two trains arrive together: 4.8 customers a minute for 40 minutes.', software: '240 requests a second for 40 seconds.' }, change: { spike: { t: 30, dur: 40, reads: 240, writes: 0 } } },
       { id: 'late-train', name: { cafe: 'The late train', software: 'A late spike' }, story: { cafe: 'The train runs late and pulls in at 9:00.', software: 'The spike starts at 1:30 instead of 0:30.' }, change: { spike: { t: 90, dur: 20, reads: 200, writes: 0 } } }
     ],
     scenes: {
@@ -68,7 +76,13 @@ const LEVELS = [
     }
   },
   {
-    id: 'l2', n: 2, name: 'Sick day', concept: 'Redundancy', difficulty: 'Easy',
+    id: 'l2', n: 2, name: 'Sick day', concept: 'Redundancy', difficulty: 'Easy', principles: ['redundancy'],
+    topic: {
+      id: 'redundancy', name: 'Redundancy',
+      idea: { cafe: 'If the shop only works with every barista in, one sick call ruins the morning.', software: 'If the system needs every copy up, one crash takes it down. That copy is a single point of failure.' },
+      tool: { cafe: 'One spare barista and a shared line', software: 'N+1 copies behind a load balancer' },
+      tradeoff: { cafe: 'On a normal day the spare barista is paid to stand around.', software: 'On a normal day the spare copy is capacity you pay for and barely use.' }
+    },
     map: { x: { dim: 'failDur', from: 10, to: 90, step: 5 }, y: { dim: 'base', from: 180, to: 280, step: 10 }, fixed: { failT: 10 } },
     reading: { label: 'Load balancer', url: PRIMER + '#load-balancer', extra: { label: 'Availability patterns', url: PRIMER + '#availability-patterns' } },
     translate: [
@@ -124,7 +138,13 @@ const LEVELS = [
     }
   },
   {
-    id: 'l3', n: 3, name: 'Fridge sells out', concept: 'Caching', difficulty: 'Medium',
+    id: 'l3', n: 3, name: 'Fridge sells out', concept: 'Caching', difficulty: 'Medium', principles: ['caching'],
+    topic: {
+      id: 'caching', name: 'Caching',
+      idea: { cafe: 'Most customers want the same few drinks. Hand those over ready-made and the espresso machine only makes the rest.', software: 'Most reads ask for the same data. Answer them from memory and the database only sees the misses.' },
+      tool: { cafe: 'A grab-and-go fridge', software: 'A cache' },
+      tradeoff: { cafe: 'When the fridge sells out, everyone lands on the machine at once.', software: 'When the cache is cold, every read hits the database at once.' }
+    },
     map: { x: { dim: 'base', from: 900, to: 1100, step: 10 }, y: { dim: 'flush', from: 0, to: 1, step: 1 }, fixed: { flushT: 40 } },
     reading: { label: 'Cache', url: PRIMER + '#cache' },
     translate: [
@@ -185,7 +205,13 @@ const LEVELS = [
     }
   },
   {
-    id: 'l4', n: 4, name: 'Mobile orders', concept: 'Asynchronism', difficulty: 'Medium',
+    id: 'l4', n: 4, name: 'Mobile orders', concept: 'Asynchronism', difficulty: 'Medium', principles: ['async'],
+    topic: {
+      id: 'async', name: 'Queues',
+      idea: { cafe: 'Nobody needs their drink the second they tap order. Take the order now and make it a little later.', software: 'A write does not have to finish before you answer. Accept it now and do the work later.' },
+      tool: { cafe: 'A ticket rail', software: 'A message queue with workers' },
+      tradeoff: { cafe: 'Orders arrive later, and the rail can only hold so many tickets.', software: 'Work finishes later, and the queue can only hold so much.' }
+    },
     map: { x: { dim: 'spikeDur', from: 10, to: 30, step: 2 }, y: { dim: 'spikeLoad', from: 100, to: 300, step: 10 }, fixed: { base: 60, spikeT: 30 }, noun: { cafe: 'app orders', software: 'writes' } },
     reading: { label: 'Asynchronism', url: PRIMER + '#asynchronism' },
     translate: [
@@ -240,6 +266,81 @@ const LEVELS = [
         scenario: {
           duration: 150, base: { reads: 0, writes: 60 }, spike: { t: 30, dur: 20, reads: 0, writes: 250 },
           latencyTargetMs: 300, targets: { errorRate: 0.01, slowShare: 0.05, cost: 0.6 }
+        }
+      }
+    }
+  },
+  {
+    // The capstone: every topic at once, framed as a real system. No new blocks or shocks, only the four
+    // lessons together. The cache stays warm here: a cold cache at peak needs the full database anyway,
+    // so the capstone tests the cache's everyday job of keeping reads off the database.
+    id: 'l5', n: 5, name: 'Opening day', concept: 'Capstone', difficulty: 'Hard', capstone: true,
+    principles: ['scaling', 'redundancy', 'caching', 'async'],
+    topic: {
+      id: 'capstone', name: 'Design a Twitter timeline',
+      idea: { cafe: 'A real opening day needs every trick at once: enough baristas, a spare, the fridge and the ticket rail.', software: 'A real system needs all four at once: capacity, a spare copy, a cache for reads and a queue for writes.' },
+      tool: { cafe: 'Everything you have built so far', software: 'Everything you have built so far' },
+      tradeoff: { cafe: 'Each fix costs money, and the budget only fits the right ones.', software: 'Each fix costs money, and the budget only fits the right ones.' }
+    },
+    map: {
+      x: { dim: 'failDur', from: 10, to: 60, step: 5 }, y: { dim: 'base', from: 740, to: 940, step: 20 },
+      from: 'worst', reads: true, fixed: { failT: 30 },
+      note: { cafe: 'Every square has the biggest promo, and the barista goes home sick the minute it starts.', software: 'Every square has the biggest write burst, and the copy crashes the second it starts.' }
+    },
+    reading: { label: 'Design the Twitter timeline', url: PRIMER + '/blob/master/solutions/system_design/twitter/README.md' },
+    translate: [
+      ['Baristas at the register', 'App servers'], ['Shared line', 'Load balancer'], ['Grab-and-go fridge', 'Cache'], ['Ticket rail', 'Queue'], ['Espresso machine', 'Database'], ['Influencer post', 'Celebrity tweet']
+    ],
+    design: {
+      traffic: { x: 20, y: 170 },
+      blocks: [
+        { id: 'lb1', type: 'loadBalancer', names: { cafe: 'Shared line', software: 'Load balancer' }, x: 190, y: 170 },
+        { id: 's1', type: 'server', names: { cafe: 'Baristas', software: 'App servers' }, capacity: 300, copies: 4, queueLimit: 2000, x: 400, y: 170 },
+        { id: 'db1', type: 'database', names: { cafe: 'Espresso machine', software: 'Database' }, readCapacity: 300, writeCapacity: 100, replicas: 0, queueLimit: 2000, x: 720, y: 170 }
+      ],
+      wires: [['traffic', 'lb1'], ['lb1', 's1'], ['s1', 'db1']]
+    },
+    starter: {
+      traffic: { x: 20, y: 170 },
+      blocks: [{ id: 'db1', type: 'database', names: { cafe: 'Espresso machine', software: 'Database' }, readCapacity: 300, writeCapacity: 100, replicas: 0, queueLimit: 2000, x: 720, y: 170 }],
+      wires: []
+    },
+    tests: [
+      { id: 'all-hands', name: { cafe: 'Nobody calls in sick', software: 'No crash' }, story: { cafe: 'The promo still goes out, but every barista stays all morning.', software: 'The celebrity still tweets, but every copy stays up.' }, change: { serverFail: null } },
+      { id: 'worst', name: { cafe: 'Everything at once', software: 'Everything at once' }, story: { cafe: 'The worst morning in the brief: 18 customers a minute, a promo of 6 app orders a minute for 25 minutes, and a barista goes home sick at 8:00 for an hour.', software: 'The worst case in the constraints: 900 reads a second, a 300-write burst for 25 seconds, and a copy crashes at 0:30 for 60 seconds.' }, change: { base: { reads: 900, writes: 40 }, spike: { t: 30, dur: 25, reads: 900, writes: 300 }, serverFail: { t: 30, dur: 60 } } },
+      { id: 'late-crash', name: { cafe: 'Sick after the promo', software: 'A crash after the burst' }, story: { cafe: 'A busy promo morning, then a barista goes home at 9:00 for an hour.', software: 'Peak reads and the biggest burst, then a copy crashes at 1:30 for 60 seconds.' }, change: { base: { reads: 900, writes: 40 }, spike: { t: 30, dur: 25, reads: 900, writes: 300 }, serverFail: { t: 90, dur: 60 } } }
+    ],
+    scenes: {
+      cafe: {
+        title: 'Opening day',
+        brief: 'Your second shop opens today, and you build it from scratch. 16 customers walk in each minute, and 0.8 more order on the app. Most want bottled cold brew; the espresso machine makes 6 drinks a minute and 2 app orders a minute. At 8:00 an influencer posts a free-drink code, and for 20 minutes 5 app orders arrive every minute. At 8:30 a barista goes home sick for 40 minutes.',
+        goal: 'Lose fewer than 1% of customers, keep waits under 5 minutes and make every app order by closing, for $430 an hour or less.',
+        constraints: ['Normal mornings: 16 customers a minute, busy ones 18, plus 0.8 app orders a minute.', 'A promo can bring up to 6 app orders a minute, for up to 25 minutes.', 'One barista may be out sick for up to an hour, at any time, even mid-promo.', 'The espresso machine makes 6 drinks and 2 app orders a minute. Every ticket on the rail must be made by closing.', 'Prices are the ones you know: $20 an hour per 2 a minute of barista, fridges from $10, an extra machine $60, a ticket rail from $10.'],
+        predict: { key: 'peakErrorRate', scale: 1, question: 'In the worst minute, what share of customers walk out?', unit: '%' },
+        hints: [
+          'Count what reaches the espresso machine: 16 customers a minute against 6 drinks. What takes most of them off the machine?',
+          'Each problem in the brief is one you have solved before: the rush, the sick day, the fridge and the app orders. Which ones does your shop not handle yet?',
+          'A fridge in front of the machine, a ticket rail for app orders, and one barista more than the rush needs, behind a shared line.'
+        ],
+        scenario: {
+          duration: 150, base: { reads: 800, writes: 40 }, spike: { t: 30, dur: 20, reads: 800, writes: 250 }, serverFail: { t: 60, dur: 40 },
+          latencyTargetMs: 5000, targets: { errorRate: 0.01, slowShare: 0.05, cost: 2.15, drain: true }
+        }
+      },
+      software: {
+        title: 'Design a Twitter timeline',
+        brief: 'Build the timeline service from scratch. Users load 800 timelines a second and post 40 tweets a second. The database handles 300 reads and 100 writes a second, and most timeline reads ask for the same popular tweets. At 0:30 a celebrity tweets, and the fan-out writes 250 times a second for 20 seconds. At 1:00 one app server copy crashes for 40 seconds.',
+        goal: 'Keep errors under 1% and slow requests under 5%, and finish every queued write by the end, for $2.15 an hour or less.',
+        constraints: ['Normal traffic: 800 timeline reads a second, 900 on peak days, plus 40 tweets a second.', 'A fan-out burst can reach 300 writes a second, for up to 25 seconds.', 'One app server copy may crash for up to 60 seconds, at any time, even mid-burst.', 'The database handles 300 reads and 100 writes a second. Every queued write must be done by the end of the run.', 'Prices as before: servers $0.10 per 100/s per copy, a load balancer $0.05, caches from $0.05, a replica $0.30, a queue from $0.05.'],
+        predict: { key: 'peakErrorRate', scale: 1, question: 'At the worst second, what share of requests fail?', unit: '%' },
+        hints: [
+          'Count what reaches the database: 800 reads a second against 300. What keeps repeated reads off it?',
+          'Each line of the brief is one topic: capacity for the burst, a spare copy for the crash, a cache for reads and a queue for writes.',
+          'A cache in front of the database, a queue for the fan-out writes, and one app server copy more than the burst needs, behind a load balancer.'
+        ],
+        scenario: {
+          duration: 150, base: { reads: 800, writes: 40 }, spike: { t: 30, dur: 20, reads: 800, writes: 250 }, serverFail: { t: 60, dur: 40 },
+          latencyTargetMs: 300, targets: { errorRate: 0.01, slowShare: 0.05, cost: 2.15, drain: true }
         }
       }
     }

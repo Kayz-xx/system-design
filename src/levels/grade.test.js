@@ -24,6 +24,12 @@ const CASES = {
   l4: [
     { blocks: [srv('s', 300), db({ readCapacity: 100, queueLimit: 200 }), queue], wires: [['traffic', 's'], ['s', 'q'], ['q', 'db1']] },
     { blocks: [srv('s', 250), db({ readCapacity: 100, queueLimit: 200 }), queue], wires: [['traffic', 's'], ['s', 'q'], ['q', 'db1']] }
+  ],
+  // The capstone: every topic at once. Workers slower than the database clear the sample's backlog by
+  // closing but not the biggest burst's.
+  l5: [
+    { blocks: [lb, srv('s', 300, 5, 5000), cache, db(), queue], wires: [['traffic', 'lb'], ['lb', 's'], ['s', 'c'], ['c', 'db1'], ['s', 'db1'], ['s', 'q'], ['q', 'db1']] },
+    { blocks: [lb, srv('s', 300, 5, 5000), cache, db(), { ...queue, workerRate: 40 }], wires: [['traffic', 'lb'], ['lb', 's'], ['s', 'c'], ['c', 'db1'], ['s', 'db1'], ['s', 'q'], ['q', 'db1']] }
   ]
 };
 

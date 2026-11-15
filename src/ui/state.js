@@ -50,6 +50,8 @@ export const S = {
   wiring: null,  // wire being drawn
   hoverT: null,  // tick under the chart crosshair
   banner: null,  // level id whose transform card is showing
+  topicsOpen: true, // the topic picker, shown first and from the header
+  picked: false, // a topic has been chosen once, so the picker can be closed
   toast: null,
   seq: 1
 };
