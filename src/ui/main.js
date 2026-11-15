@@ -1,8 +1,8 @@
 // Entry point: header, palette, actions and input handling. Wires the render registry R.
 import { simulate, validate, canWire, blockCost, REFUSAL } from '../sim/sim.js';
-import { LEVELS } from '../levels/levels.js';
+import { LEVELS, TRACKS } from '../levels/levels.js';
 import { grade } from '../levels/grade.js';
-import { S, R, L, W, world, key, scene, design, run, attempts, typeOf, simDesign, stars, nameOf, clone, esc, reducedMotion, rememberDesign, endDesignEdit, historyStatus, restoreDesign, resetDesign, advancePlayback, starterOf, submission } from './state.js';
+import { S, R, L, W, world, key, scene, design, run, attempts, typeOf, simDesign, stars, chapterDone, nameOf, clone, esc, reducedMotion, rememberDesign, endDesignEdit, historyStatus, restoreDesign, resetDesign, advancePlayback, starterOf, submission } from './state.js';
 import { WORLDS, FIELDS, DEFAULTS, CAFE_REFUSAL, cafeWords, icon } from './worlds.js';
 import { renderBoard as drawBoard, renderOverlay, NODE_W, NODE_H } from './board.js';
 import { fx, SPEED, startFx, sizeCanvas, resetFx, invalidateColors } from './fx.js';
@@ -13,7 +13,7 @@ import { connectionGuide, applyConnectionPlan } from './build-guide.js';
 
 /* ---------- Header and palette ---------- */
 function renderTabs() {
-  document.getElementById('day-label').textContent = `${world() === 'cafe' ? 'Day' : 'Lab'} ${L().n} · ${L().name}`;
+  document.getElementById('day-label').textContent = `${world() === 'cafe' ? 'Day' : 'Lab'} ${L().n} · ${L().firstScene === 'software' && world() === 'software' ? scene().title : L().name}`;
   document.getElementById('tabs').innerHTML = LEVELS.map((l) => {
     const st = stars(l.id);
     return `<button class="tab" ${S.level === l.id ? 'aria-current="page"' : ''} data-level="${l.id}"><span class="chapter-number">${String(l.n).padStart(2, '0')}</span><span class="chapter-copy"><b>${esc(l.name)}</b><small>${esc(l.concept)}</small></span><span class="stars" aria-label="${st.filter(Boolean).length} of 3 stars">${st.map((x) => x ? '★' : '☆').join('')}</span></button>`;
@@ -48,28 +48,44 @@ function renderMission() {
 }
 
 /* ---------- Topic picker ---------- */
-// The first screen: choose the idea to learn, then play its chapter. The capstone combines all four.
-export function topicCardsHtml() {
-  const topics = LEVELS.filter((l) => !l.capstone), cap = LEVELS.find((l) => l.capstone);
-  const done = (l) => { const st = stars(l.id); return st[0] && st[1]; };
-  const starsOf = (l) => { const st = stars(l.id); return `<span class="stars" aria-label="${st.filter(Boolean).length} of 3 stars">${st.map((x) => (x ? '★' : '☆')).join('')}</span>`; };
-  const card = (l) => `<button class="topic-card${done(l) ? ' done' : ''}" data-topic="${l.id}">
-      <span class="topic-top"><span class="chapter-number">${String(l.n).padStart(2, '0')}</span>${starsOf(l)}</span>
-      <b class="topic-name">${esc(l.topic.name)}</b>
-      <span class="topic-idea">${esc(l.topic.idea.software)}</span>
-      <span class="topic-pair"><span><i>In the café</i>${esc(l.topic.tool.cafe)}</span><span><i>In software</i>${esc(l.topic.tool.software)}</span></span>
-      <span class="topic-trade"><i>Trade-off</i> ${esc(l.topic.tradeoff.software)}</span>
-      <span class="topic-go">${done(l) ? 'Play again' : stars(l.id).some(Boolean) ? 'Continue' : 'Start'} · ${esc(l.name)} →</span>
-    </button>`;
-  const finished = topics.filter(done).length;
-  const capCard = cap ? `<button class="topic-card capstone${finished === topics.length ? '' : ' early'}" data-topic="${cap.id}">
-      <span class="topic-top"><span class="eyebrow">Capstone · all four topics</span>${starsOf(cap)}</span>
-      <b class="topic-name">${esc(cap.topic.name)}</b>
-      <span class="topic-idea">${esc(cap.topic.idea.software)}</span>
-      <span class="topic-tool">${cap.principles.map((p) => `<span>${esc(topics.find((t) => t.topic.id === p).topic.name)}</span>`).join('<span aria-hidden="true">+</span>')}</span>
-      <span class="topic-go">${finished === topics.length ? 'Ready when you are' : `Best after the four topics · ${finished} of ${topics.length} done`} · ${esc(cap.name)} →</span>
-    </button>` : '';
-  return `<div class="topic-grid">${topics.map(card).join('')}</div>${capCard}`;
+// The first screen. Chapters are listed by track straight from the level data, so a new chapter only
+// needs a `track`, a `hook` and a `topic` in levels.js. The panel beside the list shows the chosen one.
+const PRINCIPLE_NAME = { scaling: 'Scaling', redundancy: 'Redundancy', caching: 'Caching', async: 'Queues' };
+
+function progressOf(l) {
+  const st = stars(l.id), done = chapterDone(l);
+  const label = done ? 'Done' : st.some(Boolean) ? 'In progress' : l.capstone && !LEVELS.filter((x) => x.track === 'foundations').every(chapterDone) ? 'Best after Foundations' : 'Not started';
+  return { st, done, label };
+}
+
+function topicDetailHtml(l) {
+  const t = l.topic, p = progressOf(l), sw = l.firstScene === 'software';
+  const opensIn = sw ? 'Software lab' : 'Coffee shop, then software';
+  const pairs = l.capstone
+    ? `<dl class="topic-facts"><dt>Uses</dt><dd class="chips">${l.principles.map((x) => `<span>${esc(PRINCIPLE_NAME[x])}</span>`).join('')}</dd><dt>Opens in</dt><dd>${opensIn}</dd><dt>Trade-off</dt><dd>${esc(t.tradeoff.software)}</dd></dl>`
+    : `<dl class="topic-facts"><dt>In the café</dt><dd>${esc(t.tool.cafe)}</dd><dt>In software</dt><dd>${esc(t.tool.software)}</dd><dt>Trade-off</dt><dd>${esc(t.tradeoff.software)}</dd></dl>`;
+  return `<div class="topic-detail-head"><span class="topic-kicker">${esc(TRACKS.find((x) => x.id === l.track).name)} · ${String(l.n).padStart(2, '0')}</span><span class="topic-status${p.done ? ' done' : ''}">${esc(p.label)} · ${p.st.filter(Boolean).length}/3 ★</span></div>
+    <h2 id="topic-detail-title">${esc(t.name)}</h2>
+    <p class="topic-idea">${esc(t.idea.software)}</p>
+    ${pairs}
+    <button class="btn primary" data-topic="${l.id}">${p.done ? 'Play again' : p.st.some(Boolean) ? 'Continue' : 'Start'}: ${esc(sw ? l.scenes.software.title : l.name)} →</button>`;
+}
+
+export function topicCardsHtml(sel) {
+  return TRACKS.map((tr) => {
+    const items = LEVELS.filter((l) => l.track === tr.id);
+    if (!items.length) return '';
+    const done = items.filter(chapterDone).length;
+    const rows = items.map((l) => {
+      const p = progressOf(l);
+      return `<li><button class="topic-row${l.id === sel ? ' sel' : ''}${p.done ? ' done' : ''}" data-topic-pick="${l.id}" aria-pressed="${l.id === sel}">
+          <span class="topic-num">${p.done ? '✓' : String(l.n).padStart(2, '0')}</span>
+          <span class="topic-text"><b>${esc(l.topic.name)}</b><small>${esc(l.hook)}</small></span>
+          <span class="topic-stars" aria-label="${p.st.filter(Boolean).length} of 3 stars">${p.st.map((x) => (x ? '★' : '☆')).join('')}</span>
+        </button></li>`;
+    }).join('');
+    return `<section class="track" aria-labelledby="track-${tr.id}"><div class="track-head"><h2 id="track-${tr.id}">${esc(tr.name)}</h2><span>${done} of ${items.length} done</span></div><p class="track-blurb">${esc(tr.blurb)}</p><ol class="topic-list">${rows}</ol></section>`;
+  }).join('');
 }
 
 function renderTopics() {
@@ -77,12 +93,16 @@ function renderTopics() {
   el.hidden = !S.topicsOpen;
   document.getElementById('app').inert = S.topicsOpen;
   if (!S.topicsOpen) return;
+  const sel = LEVELS.find((l) => l.id === S.topicSel) || LEVELS.find((l) => !chapterDone(l)) || LEVELS[0];
   el.innerHTML = `<section class="topics-panel" role="dialog" aria-modal="true" aria-labelledby="topics-title">
-      ${S.picked ? '<button class="icon-btn close" id="topics-close" aria-label="Back to the chapter">×</button>' : ''}
-      <p class="eyebrow">Little Systems Café</p>
-      <h1 id="topics-title">What do you want to learn?</h1>
-      <p class="topics-lead">Each topic is one idea from system design. You make it work in a coffee shop first, then build the same thing as software, and see why it held.</p>
-      ${topicCardsHtml()}
+      <header class="topics-head">
+        <div><p class="eyebrow">Little Systems</p><h1 id="topics-title">What do you want to learn?</h1></div>
+        ${S.picked ? '<button class="icon-btn close" id="topics-close" aria-label="Back to the chapter">×</button>' : ''}
+      </header>
+      <div class="topics-body">
+        <nav class="topics-nav" aria-label="Chapters">${topicCardsHtml(sel.id)}</nav>
+        <article class="topic-detail" aria-live="polite" aria-labelledby="topic-detail-title">${topicDetailHtml(sel)}</article>
+      </div>
     </section>`;
 }
 
@@ -400,6 +420,13 @@ function switchScene(name, animate) {
 document.addEventListener('click', (e) => {
   const action = e.target.closest('button');
   if (action && action.disabled) return;
+  const pick = e.target.closest('[data-topic-pick]');
+  if (pick) {
+    S.topicSel = pick.dataset.topicPick; renderTopics();
+    document.querySelector(`[data-topic-pick="${S.topicSel}"]`)?.focus({ preventScroll: true });
+    if (window.matchMedia('(max-width: 700px)').matches) document.querySelector('.topic-detail')?.scrollIntoView({ block: 'nearest' });
+    return;
+  }
   const topic = e.target.closest('[data-topic]');
   if (topic) {
     cancelSceneTransition(); cancelDrag(); endDesignEdit();
@@ -410,7 +437,7 @@ document.addEventListener('click', (e) => {
     document.querySelector('#side .sheet, #side .btn.primary')?.focus({ preventScroll: true });
     return;
   }
-  if (action?.id === 'topics-open' || action?.hasAttribute('data-open-topics')) { if (!isPlaying()) { S.topicsOpen = true; renderTopics(); document.querySelector('.topic-card')?.focus(); } return; }
+  if (action?.id === 'topics-open' || action?.hasAttribute('data-open-topics')) { if (!isPlaying()) { S.topicsOpen = true; renderTopics(); document.querySelector('.topic-row.sel')?.focus(); } return; }
   if (action?.id === 'topics-close') { closeTopics(); return; }
   const lvBtn = e.target.closest('[data-level]');
   if (lvBtn) {

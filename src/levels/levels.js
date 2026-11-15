@@ -11,14 +11,22 @@
 // `map` is the survival map (see survival.js): the two knobs of the Constraints that matter, in software
 // units, swept from easy to hard. Everything else is held at its worst (`fixed`). With `from`, the map starts
 // from that test instead of the sample; with `reads`, a load axis changes reads only and keeps the writes.
-// `topic` is what the topic picker shows; `principles` are the lessons the Why-it-worked card explains.
+// `topic` and `hook` are what the topic picker shows, under the chapter's `track`; `principles` are the lessons
+// the Why-it-worked card explains. `firstScene` is the scene a chapter opens in (the coffee shop unless set).
 
 const PRIMER = 'https://github.com/donnemartin/system-design-primer';
 const SCALE = 50;
 
+// Tracks group chapters on the topic picker, in order. A new chapter joins a track by naming it in `track`.
+const TRACKS = [
+  { id: 'foundations', name: 'Foundations', blurb: 'One idea at a time. Make it work in a coffee shop, then build the same thing as software.' },
+  { id: 'systems', name: 'Real systems', blurb: 'Interview-style problems that need several foundations at once. Built straight in the software lab.' }
+];
+
 const LEVELS = [
   {
     id: 'l1', n: 1, name: 'Morning rush', concept: 'Saturation', difficulty: 'Easy', principles: ['scaling'],
+    track: 'foundations', hook: 'Size for the rush, not the average.',
     topic: {
       id: 'scaling', name: 'Scaling',
       idea: { cafe: 'One barista has a top speed. When more people walk in than they can serve, the line grows until the rush is over.', software: 'Every server has a ceiling. When requests arrive faster than it serves them, a queue builds and latency climbs.' },
@@ -77,6 +85,7 @@ const LEVELS = [
   },
   {
     id: 'l2', n: 2, name: 'Sick day', concept: 'Redundancy', difficulty: 'Easy', principles: ['redundancy'],
+    track: 'foundations', hook: 'Keep working when one part fails.',
     topic: {
       id: 'redundancy', name: 'Redundancy',
       idea: { cafe: 'If the shop only works with every barista in, one sick call ruins the morning.', software: 'If the system needs every copy up, one crash takes it down. That copy is a single point of failure.' },
@@ -139,6 +148,7 @@ const LEVELS = [
   },
   {
     id: 'l3', n: 3, name: 'Fridge sells out', concept: 'Caching', difficulty: 'Medium', principles: ['caching'],
+    track: 'foundations', hook: 'Answer repeated questions from memory.',
     topic: {
       id: 'caching', name: 'Caching',
       idea: { cafe: 'Most customers want the same few drinks. Hand those over ready-made and the espresso machine only makes the rest.', software: 'Most reads ask for the same data. Answer them from memory and the database only sees the misses.' },
@@ -206,6 +216,7 @@ const LEVELS = [
   },
   {
     id: 'l4', n: 4, name: 'Mobile orders', concept: 'Asynchronism', difficulty: 'Medium', principles: ['async'],
+    track: 'foundations', hook: 'Accept the work now, finish it later.',
     topic: {
       id: 'async', name: 'Queues',
       idea: { cafe: 'Nobody needs their drink the second they tap order. Take the order now and make it a little later.', software: 'A write does not have to finish before you answer. Accept it now and do the work later.' },
@@ -275,6 +286,7 @@ const LEVELS = [
     // lessons together. The cache stays warm here: a cold cache at peak needs the full database anyway,
     // so the capstone tests the cache's everyday job of keeping reads off the database.
     id: 'l5', n: 5, name: 'Opening day', concept: 'Capstone', difficulty: 'Hard', capstone: true,
+    track: 'systems', firstScene: 'software', hook: 'Fan-out writes, hot reads and a crash, all at once.',
     principles: ['scaling', 'redundancy', 'caching', 'async'],
     topic: {
       id: 'capstone', name: 'Design a Twitter timeline',
@@ -347,4 +359,4 @@ const LEVELS = [
   }
 ];
 
-export { LEVELS, SCALE };
+export { LEVELS, TRACKS, SCALE };

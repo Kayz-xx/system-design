@@ -4,7 +4,7 @@
 import { CACHE_SIZES, blockCost } from '../sim/sim.js';
 import { askTutor, tutorRequest } from '../ai/tutor.js';
 import { SCALE, LEVELS } from '../levels/levels.js';
-import { S, L, W, world, key, scene, design, run, attempts, nameOf, stars, esc, fmtN, fmt1, fmtPct, runScenario, submission } from './state.js';
+import { S, L, W, world, key, scene, design, run, attempts, nameOf, stars, chapterDone, esc, fmtN, fmt1, fmtPct, runScenario, submission } from './state.js';
 import { FIELDS } from './worlds.js';
 import { bestHtml } from './best-panel.js';
 import { mapHtml } from './survival-panel.js';
@@ -27,7 +27,9 @@ function fmtPred(v) {
 function starSummary(lv) {
   const st = stars(lv.id), first = (S.attempts[lv.id + ':software'] || [])[0];
   const descriptions = [
-    st[0] ? 'Your coffee shop passed every test.' : 'Submit a coffee shop that passes every test.',
+    lv.firstScene === 'software'
+      ? (st[0] ? 'Bonus: your coffee shop version passed every test.' : 'Bonus: pass the same problem as a coffee shop.')
+      : st[0] ? 'Your coffee shop passed every test.' : 'Submit a coffee shop that passes every test.',
     st[1] ? 'Your software system passed every test.' : 'Submit a software design that passes every test.',
     st[2] ? 'Your first software guess was within 15%.' : !first
       ? 'Get your first software guess within 15%.' : Number.isFinite(first.err)
@@ -42,7 +44,7 @@ function starSummary(lv) {
 }
 
 function nextChapter() {
-  return LEVELS.find((lv) => { const st = stars(lv.id); return !st[0] || !st[1]; });
+  return LEVELS.find((lv) => !chapterDone(lv));
 }
 
 // Plain-language lines for each event in the run log, in the current world's words.
@@ -263,6 +265,7 @@ function submissionHtml(lv, w, sub) {
     next = !unfinished ? `<span class="right">All ${LEVELS.length} chapters complete. You have practised ${esc(LEVELS.filter((l) => l.topic && !l.capstone).map((l) => l.topic.name.toLowerCase()).join(', '))}, and put them together.</span>`
       : unfinished.id === lv.id ? '<button class="btn primary" data-scene="cafe">Finish the coffee shop →</button>'
         : `<button class="btn primary" data-level="${unfinished.id}">Continue: ${esc(unfinished.name)} →</button>`;
+    if (lv.firstScene === 'software' && !stars(lv.id)[0]) next += '<button class="text-btn" data-scene="cafe">Bonus: run it as a coffee shop</button>';
   }
   const guessed = Number.isFinite(sub.guess) ? `You guessed ${sub.guess} of ${sub.total}${sub.guess === sub.passedCount ? ' · ✓ spot on' : ''}.` : '';
   return `<section class="sheet submission" aria-label="Submission">${closeTask}

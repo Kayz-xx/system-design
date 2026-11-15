@@ -35,7 +35,7 @@ export const S = {
   level: 'l1',
   labPhase: {},  // per-scene task: build, predict, submit, review, submission or brief
   zoom: 1,
-  scene: Object.fromEntries(LEVELS.map((l) => [l.id, 'cafe'])),
+  scene: Object.fromEntries(LEVELS.map((l) => [l.id, l.firstScene || 'cafe'])),
   designs: Object.fromEntries(LEVELS.map((l) => [l.id, { cafe: clone(starterOf(l)), software: clone(starterOf(l)) }])),
   pred: {},      // key -> { block, value }
   runs: {},      // key -> { log, t, done, stale }
@@ -55,6 +55,7 @@ export const S = {
   banner: null,  // level id whose transform card is showing
   topicsOpen: true, // the topic picker, shown first and from the header
   picked: false, // a topic has been chosen once, so the picker can be closed
+  topicSel: null, // the chapter whose details the picker shows
   toast: null,
   seq: 1
 };
@@ -115,6 +116,13 @@ export function resetDesign() {
 
 // Stars per level: coffee shop accepted, software accepted, first software guess within 15%.
 // Accepted means a submission passed the sample and every hidden test.
+// A chapter is done when both scenes are accepted; a chapter that opens in software (the real-systems
+// track) is done when its software is accepted, and its coffee shop is a bonus star.
+export function chapterDone(l) {
+  const st = stars(l.id);
+  return l.firstScene === 'software' ? st[1] : st[0] && st[1];
+}
+
 export function stars(levelId) {
   const first = (S.attempts[levelId + ':software'] || [])[0];
   return [!!S.accepted[levelId + ':cafe'], !!S.accepted[levelId + ':software'], !!first && Number.isFinite(first.err) && first.err <= 0.15];
