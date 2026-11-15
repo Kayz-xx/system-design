@@ -56,7 +56,7 @@ export const WORLDS = {
     rateWord: (v) => `${fmtN(v)}/s`,
     type: TYPE_NAME,
     defaultName: { server: 'Server', loadBalancer: 'Load balancer', cache: 'Cache', database: 'Database', queue: 'Queue' },
-    trafficName: 'Users',
+    trafficName: 'Requests',
     cost: (c) => '$' + c.toFixed(2) + '/h',
     latTarget: (ms) => fmtN(ms) + ' ms',
     checks: { errors: 'Errors', slow: (ms) => `Slower than ${fmtN(ms)} ms` },
@@ -127,6 +127,6 @@ export function artifact(w, type, copies = 1) {
     const x = [34, 96, 15][i];
     return `<circle class="art-skin" cx="${x}" cy="23" r="10"/><path class="art-accent" d="M${x - 10} 48V36a10 10 0 0 1 20 0v12z"/>`;
   }).join('') : '';
-  const software = '<ellipse class="art-shadow" cx="65" cy="73" rx="46" ry="5"/><rect class="art-glass" x="24" y="8" width="82" height="60" rx="10"/>';
-  return `<svg class="artifact" viewBox="0 0 130 82" aria-hidden="true">${w === 'cafe' ? crew + cafe[type] : software + `<g transform="translate(46 19) scale(1.6)" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${ICON_PATHS.software[type]}</g>`}</svg>`;
+  const software = `<g transform="translate(38 10) scale(2.25)" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="square" stroke-linejoin="miter">${ICON_PATHS.software[type]}</g>`;
+  return `<svg class="artifact" viewBox="0 0 130 82" aria-hidden="true">${w === 'cafe' ? crew + cafe[type] : software}</svg>`;
 }

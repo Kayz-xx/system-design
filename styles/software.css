@@ -1,0 +1,139 @@
+/* Carbon White theme, adapted to the lab's native HTML controls and interactive canvas.
+   Reference: https://carbondesignsystem.com/guidelines/color/tokens/ */
+@font-face { font-family: "IBM Plex Sans"; font-style: normal; font-weight: 400; font-display: swap; src: url("../assets/fonts/ibm-plex-sans/IBMPlexSans-Regular.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Sans"; font-style: normal; font-weight: 500; font-display: swap; src: url("../assets/fonts/ibm-plex-sans/IBMPlexSans-Medium.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Sans"; font-style: normal; font-weight: 600; font-display: swap; src: url("../assets/fonts/ibm-plex-sans/IBMPlexSans-SemiBold.woff2") format("woff2"); }
+
+:root[data-world="software"] {
+  --bg: #ffffff; --panel: #ffffff; --panel-2: #f4f4f4;
+  --ink: #161616; --ink-2: #525252; --ink-3: #6f6f6f; --line: #e0e0e0;
+  --board: #f4f4f4; --board-line: #e0e0e0; --chalk: #8d8d8d;
+  --accent: #0f62fe; --accent-ink: #ffffff; --accent-soft: #edf5ff;
+  --accent-hover: #0353e9; --accent-active: #002d9c; --control-border: #8d8d8d;
+  --particle: #0f62fe; --queue: #8a3800;
+  --ok: #198038; --ok-soft: #defbe6; --warn: #8e6a00; --warn-soft: #fff8e1; --crit: #da1e28; --crit-soft: #fff1f1;
+  --font: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --display: var(--font); --mono: var(--font); --results-font: var(--font); --display-size: 1;
+  --r: 0; --shadow: #16161614; --floor: #f4f4f4; --wood: #c6c6c6; --wood-edge: #8d8d8d;
+  --window: #edf5ff; --decor: #525252; --paper: #ffffff; --skin: #c6c6c6; --hair: #393939; --floor-edge: #e0e0e0;
+  --customer-shirt: #0f62fe; --customer-served: #198038;
+  color-scheme: light;
+}
+
+[data-world="software"] body { font-size: 16px; }
+[data-world="software"] :is(button, input, select, .mono, time) { font-variant-numeric: tabular-nums; }
+[data-world="software"] :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+[data-world="software"] .top { border-bottom: 1px solid var(--line); }
+[data-world="software"] .brand { gap: 8px; }
+[data-world="software"] .brand > span { display: flex; color: var(--accent); }
+[data-world="software"] .brand svg { width: 24px; height: 24px; }
+[data-world="software"] .brand b { font: 400 20px/1.2 var(--font); letter-spacing: 0; }
+[data-world="software"] .brand em { font-style: normal; font-weight: 600; color: var(--ink); }
+[data-world="software"] .chapter-menu summary { font-size: 14px; }
+[data-world="software"] .progress { color: var(--ink-2); font-size: 14px; }
+[data-world="software"] :is(#tabs, #pal, .tools-popover, .tab, .sheet, .banner, .analysis-content, .foot p) { border-radius: 0; }
+[data-world="software"] :is(.label, .eyebrow) { text-transform: none; letter-spacing: 0; font-size: 12px; font-weight: 500; color: var(--ink-2); }
+[data-world="software"] h1 { font: 400 32px/1.25 var(--font); letter-spacing: 0; }
+[data-world="software"] #mission-sub { font-size: 14px; line-height: 1.5; }
+[data-world="software"] .mission { padding-top: 8px; }
+[data-world="software"] .text-btn { color: var(--accent); font-size: 14px; min-height: 40px; }
+[data-world="software"] .text-btn:hover { color: var(--accent-hover); text-decoration: underline; }
+[data-world="software"] .icon-btn { width: 40px; height: 40px; border-radius: 0; }
+[data-world="software"] .equipment-menu > summary { display: flex; align-items: center; min-height: 40px; border: 1px solid var(--accent); border-radius: 0; background: var(--panel); color: var(--accent); font-size: 14px; padding: 8px 12px; }
+[data-world="software"] .equipment-menu > summary:hover { background: var(--accent-soft); }
+[data-world="software"] .connection-tools > summary { min-height: 40px; }
+[data-world="software"] .floor-cost { font-size: 14px; font-weight: 500; }
+[data-world="software"] #budget { font-size: 12px; font-weight: 400; }
+[data-world="software"] .pal-btn { min-height: 48px; border-radius: 0; }
+[data-world="software"] .pal-btn .t { font-size: 14px; }
+[data-world="software"] .pal-btn small { font-size: 12px; }
+[data-world="software"] .canvas-wrap { background-color: var(--board); background-image: linear-gradient(to right, var(--board-line) 1px, transparent 1px), linear-gradient(to bottom, var(--board-line) 1px, transparent 1px); background-size: 40px 40px; border: 1px solid var(--line); }
+[data-world="software"] .cafe-set { display: none; }
+[data-world="software"] .stage { background-image: none; }
+[data-world="software"] .wire { stroke-width: 1.5; stroke-dasharray: none; opacity: 1; marker-end: url(#flow-arrow); }
+[data-world="software"] .node .artifact { color: var(--ink-2); filter: none; animation: none; }
+[data-world="software"] :is(.node:hover, .node:focus-visible) .artifact { transform: none; color: var(--accent); }
+[data-world="software"] :is(.node.s-hot, .node.s-crit, .node.s-down) .artifact { color: var(--crit); }
+[data-world="software"] .node.sel::before { display: none; }
+[data-world="software"] .node-controls { border: 0; border-bottom: 1px solid var(--control-border); border-radius: 0; background: var(--panel); }
+[data-world="software"] :is(.node-controls:hover, .node.sel .node-controls) { background: var(--accent-soft); border-bottom-color: var(--accent); }
+[data-world="software"] .node-controls .node-name { font-weight: 500; }
+[data-world="software"] .node-edit-hint { font-weight: 400; }
+[data-world="software"] .node-controls:disabled { background: var(--panel); border-bottom-color: var(--line); }
+[data-world="software"] .traffic .node-name { font: 500 17px/1.3 var(--font); }
+[data-world="software"] .traffic .node-sub { font: 14px/1.4 var(--font); color: var(--ink-2); }
+[data-world="software"] .port { border-radius: 0; width: 12px; height: 12px; opacity: 1; background: var(--panel); }
+[data-world="software"] .port-in { border-radius: 0; opacity: 1; }
+[data-world="software"] .node .chip { border-radius: 0; font: 500 12px var(--font); }
+[data-world="software"] .callout { border-radius: 0; font-size: 12px; border-left: 2px solid var(--crit); }
+[data-world="software"] .ghost-placement { border-radius: 0; font-size: 14px; }
+[data-world="software"] .floor-caption { font: 12px var(--font); min-height: 44px; }
+[data-world="software"] #world-name { font-style: normal; }
+[data-world="software"] .floor-caption > div { display: flex; align-items: center; gap: 8px; }
+[data-world="software"] .floor-caption .text-btn { min-height: 40px; }
+[data-world="software"] .flow-legend { font-size: 12px; }
+[data-world="software"] .flow-legend span::before { border-radius: 0; }
+
+[data-world="software"] .btn { min-height: 40px; border-radius: 0; padding: 10px 16px; font-size: 14px; font-weight: 400; color: var(--accent); border-color: var(--accent); background: var(--panel); }
+[data-world="software"] .btn:hover { background: var(--accent-soft); }
+[data-world="software"] .btn.primary { min-height: 48px; padding: 12px 20px; background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 400; }
+[data-world="software"] .btn.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+[data-world="software"] .btn.primary:active { background: var(--accent-active); }
+[data-world="software"] .btn.primary:disabled { background: var(--line); border-color: var(--line); color: var(--ink-3); opacity: 1; }
+[data-world="software"] .sheet { padding: 24px; box-shadow: 0 4px 16px var(--shadow); max-height: min(600px, 68dvh); }
+[data-world="software"] :is(.sheet h2, .banner h3, .task h2, .task[aria-label="Result"] h2, .task[aria-label="Running experiment"] h2, .submission h2) { font: 400 24px/1.3 var(--font); letter-spacing: 0; }
+[data-world="software"] :is(.sheet p, .task p) { font-size: 14px; line-height: 1.5; }
+[data-world="software"] .field { gap: 8px; }
+[data-world="software"] .field label { font-size: 14px; font-weight: 400; color: var(--ink-2); }
+[data-world="software"] :is(.field input, .field select, .stepper button) { border-radius: 0; background: var(--panel-2); border: 0; border-bottom: 1px solid var(--control-border); min-height: 48px; }
+[data-world="software"] :is(.field input, .field select) { font: 400 16px var(--font); }
+[data-world="software"] .stepper button { font-size: 24px; }
+[data-world="software"] .inspector-sheet .field label { font-size: 16px; font-weight: 500; color: var(--ink); }
+[data-world="software"] .inspector-sheet .stepper input { font-size: 24px; }
+[data-world="software"] .inspector-sheet .settings-help { font-size: 16px; }
+[data-world="software"] .settings-cost b { font-size: 20px; font-weight: 500; }
+[data-world="software"] :is(.sheet details > summary, .result-notes > summary) { font-size: 14px; color: var(--ink-2); padding-block: 8px; }
+[data-world="software"] :is(.hint, .badge, .check, .toast, .best-bars .bar) { border-radius: 0; }
+[data-world="software"] .badge { font-weight: 500; }
+[data-world="software"] .task .badge { font-size: 12px; }
+[data-world="software"] .sheet .badge { display: inline-block; margin-bottom: 12px; }
+[data-world="software"] .pairs { gap: 12px 16px; align-items: center; }
+[data-world="software"] :is(.pairs .from, .pairs .to) { font: 400 16px/1.4 var(--font); color: var(--ink-2); }
+[data-world="software"] .pairs .to { color: var(--ink); font-weight: 500; }
+[data-world="software"] .banner { box-shadow: 0 4px 24px var(--shadow); border-top: 3px solid var(--accent); }
+[data-world="software"] .banner .btn { min-height: 48px; }
+[data-world="software"] .tests { font-size: 14px; gap: 16px; }
+[data-world="software"] .tests small { font-size: 12px; }
+[data-world="software"] .timeline { font-size: 12px; }
+[data-world="software"] .analysis-drawer > summary { font-size: 14px; }
+[data-world="software"] .analysis-drawer[open] > summary { border-radius: 0; }
+[data-world="software"] .analysis-content { border: 1px solid var(--line); }
+[data-world="software"] :is(.chart h4, .readout, .analysis-content .readout) { font-size: 12px; }
+[data-world="software"] .analysis-content .chart text { font-size: 11px; }
+[data-world="software"] .foot { font-size: 12px; }
+
+@media (max-width: 700px) {
+  [data-world="software"] .brand b { font-size: 16px; }
+  [data-world="software"] .brand > span { display: none; }
+  [data-world="software"] .chapter-menu summary { font-size: 12px; padding-inline: 0; }
+  [data-world="software"] h1 { font-size: 28px; }
+  [data-world="software"] .mission { padding-top: 0; }
+  [data-world="software"] .mission > .text-btn { font-size: 0; width: 40px; height: 40px; flex: none; }
+  [data-world="software"] #mission-sub { font-size: 13px; }
+  [data-world="software"] .floor-toolbar { padding-inline: 4px; gap: 2px; }
+  [data-world="software"] .equipment-menu > summary { padding-inline: 8px; }
+  [data-world="software"] .floor-cost { gap: 0; font-size: 13px; }
+  [data-world="software"] #budget { font-size: 11px; }
+  [data-world="software"] .floor-caption { padding-inline: 4px; }
+  [data-world="software"] .flow-legend { font-size: 11px; gap: 8px; }
+  [data-world="software"] .floor-caption .text-btn { font-size: 12px; }
+  [data-world="software"] :is(.task h2, .task[aria-label="Result"] h2, .task[aria-label="Running experiment"] h2) { font-size: 22px; }
+  [data-world="software"] .task-actions { gap: 8px 16px; }
+  [data-world="software"] .sheet { padding: 20px; max-height: 68dvh; }
+  [data-world="software"] .foot { font-size: 10px; }
+}
+@media (max-width: 360px) {
+  [data-world="software"] .floor-toolbar > .icon-btn { width: 32px; }
+  [data-world="software"] .connection-tools > summary { padding-inline: 6px; }
+  [data-world="software"] .equipment-menu > summary { font-size: 13px; }
+}

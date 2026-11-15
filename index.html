@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="styles/app.css">
+<link rel="stylesheet" href="styles/software.css">
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to the café floor</a>
@@ -40,12 +41,12 @@
       </div>
       <div id="overlay"></div>
     </div>
-    <div class="floor-caption"><span id="world-name"></span><div><button class="text-btn" id="fit-floor">Fit floor</button><button class="text-btn" id="zoom-floor" aria-label="Zoom in on the floor">＋</button></div></div>
+    <div class="floor-caption"><span id="world-name"></span><span class="flow-legend" id="flow-legend" hidden><span class="arriving"></span><span class="waiting"></span><span class="served"></span></span><div><button class="text-btn" id="fit-floor">Fit floor</button><button class="text-btn" id="zoom-floor" aria-label="Zoom in on the floor">＋</button></div></div>
   </section>
   <aside class="side" id="side" aria-label="Current action"></aside>
   <section class="run" id="run" aria-label="Experiment timeline"></section>
 </main>
-<footer class="foot"><span id="board-help">Drag to arrange · Pull a dot to connect · Enter to edit</span><details><summary>About this little lab</summary><p>A simplified simulator for building intuition. Inspired by the <a href="https://github.com/donnemartin/system-design-primer" target="_blank" rel="noopener">System Design Primer</a>, Donne Martin · CC BY 4.0. One café minute becomes one software second.</p></details></footer>
+<footer class="foot"><span id="board-help">Tap Adjust settings to make a change · Drag equipment to arrange · Pull a dot to connect</span><details><summary>About this little lab</summary><p>A simplified simulator for building intuition. Inspired by the <a href="https://github.com/donnemartin/system-design-primer" target="_blank" rel="noopener">System Design Primer</a>, Donne Martin · CC BY 4.0. One café minute becomes one software second.</p></details></footer>
 <script type="module" src="src/ui/main.js"></script>
 </body>
 </html>

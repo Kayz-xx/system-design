@@ -21,7 +21,7 @@ function nodeSub(b, r) {
   const cafe = world() === 'cafe', Wd = W(), sc = (v) => v / Wd.scale;
   switch (b.type) {
     case 'server':
-      if (r) return cafe ? `${fmt1(sc(r.load))}/min in · ${fmtN(sc(r.queue))} waiting` : `${fmtN(r.load)}/s in · q ${fmtN(r.queue)}`;
+      if (r) return cafe ? `${fmt1(sc(r.load))}/min in · ${fmtN(sc(r.queue))} waiting` : `${fmtN(r.load)}/s in · ${fmtN(r.queue)} queued`;
       return cafe ? `${fmt1(sc(b.capacity))} drinks/min × ${b.copies}` : `${fmtN(b.capacity)} req/s × ${b.copies}`;
     case 'loadBalancer':
       if (r) return Wd.rate(r.load) + ' in';
@@ -81,7 +81,8 @@ export function renderBoard() {
     return `<path class="wire${sel ? ' sel' : ''}" d="${pathOf(g)}"/><path class="wire-hit hit" data-wire="${i}" d="${pathOf(g)}"/>`;
   }).join('');
   const temp = S.wiring ? `<path class="wire-temp" d="M${S.wiring.x1},${S.wiring.y1} L${S.wiring.x2},${S.wiring.y2}"/>` : '';
-  document.getElementById('wires').innerHTML = wires + temp;
+  const arrow = w === 'software' ? '<defs><marker id="flow-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0 0L8 4L0 8" fill="var(--chalk)"/></marker></defs>' : '';
+  document.getElementById('wires').innerHTML = arrow + wires + temp;
 
   const tr = tick ? tick.traffic : sc.base;
   const spiking = tick && tr.reads + tr.writes > sc.base.reads + sc.base.writes;
@@ -99,8 +100,11 @@ export function renderBoard() {
     html += `<div class="node ${st.cls}${sel ? ' sel' : ''}" style="left:${b.x}px;top:${b.y}px" data-node="${b.id}" data-type="${b.type}" tabindex="0" aria-label="${esc(b.names[w])}">
       ${artifact(w, b.type, rb && Number.isFinite(rb.alive) ? rb.alive : b.copies || 1)}<span class="port-in"></span>
       <div class="node-top"><span class="node-type">${icon(w, b.type)}${esc(Wd.type[b.type])}</span>${st.chip}</div>
-      <div class="node-name">${esc(b.names[w])}</div>
-      <div class="node-sub">${nodeSub(b, rb)}</div>
+      <button class="node-controls" data-edit-node="${b.id}" aria-label="Adjust ${esc(b.names[w])} settings" aria-expanded="${!!sel}" ${r && !r.done ? 'disabled' : ''}>
+        <span class="node-name">${esc(b.names[w])}</span>
+        <span class="node-sub">${nodeSub(b, rb)}</span>
+        <span class="node-edit-hint">Adjust settings <span aria-hidden="true">↗</span></span>
+      </button>
       ${b.type === 'loadBalancer' ? '' : `<div class="meter"><i style="width:${meterPct(b, rb)}%"></i></div>`}
       ${b.type === 'database' ? '' : `<button class="port" data-port="${b.id}" aria-label="Connect from ${esc(b.names[w])}"></button>`}
     </div>`;
@@ -117,7 +121,7 @@ export function renderBoard() {
   c.textContent = Wd.cost(cost);
   c.classList.toggle('over', cost > sc.targets.cost + 1e-9);
   document.getElementById('budget').textContent = `/ ${Wd.cost(sc.targets.cost)} budget`;
-  document.getElementById('world-name').textContent = w === 'cafe' ? 'Your little café' : 'The same system, in software';
+  document.getElementById('world-name').textContent = w === 'cafe' ? 'Your little café' : 'System topology';
 }
 
 export function renderOverlay() {

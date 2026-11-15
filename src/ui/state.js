@@ -20,6 +20,14 @@ export const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: r
 export const playbackTick = (now, start, speed, length) =>
   Math.max(0, Math.min(length - 1, Math.floor(((now - start) / 1000) * speed)));
 
+// Pause affects playback time only; it never changes the simulator log.
+export function advancePlayback(clock, now, speed, length) {
+  const delta = Math.max(0, now - clock.lastFrame);
+  clock.lastFrame = now;
+  if (!clock.paused) clock.elapsedMs += delta;
+  return playbackTick(clock.elapsedMs, 0, speed, length);
+}
+
 // What the board starts with: only the pieces the learner is given.
 export const starterOf = (l) => l.starter || l.design;
 

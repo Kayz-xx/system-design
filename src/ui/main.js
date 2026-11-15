@@ -2,7 +2,7 @@
 import { simulate, validate, canWire, blockCost, REFUSAL } from '../sim/sim.js';
 import { LEVELS } from '../levels/levels.js';
 import { grade } from '../levels/grade.js';
-import { S, R, L, W, world, key, scene, design, run, attempts, typeOf, simDesign, stars, nameOf, clone, esc, reducedMotion, rememberDesign, endDesignEdit, historyStatus, restoreDesign, resetDesign, playbackTick, starterOf, submission } from './state.js';
+import { S, R, L, W, world, key, scene, design, run, attempts, typeOf, simDesign, stars, nameOf, clone, esc, reducedMotion, rememberDesign, endDesignEdit, historyStatus, restoreDesign, resetDesign, advancePlayback, starterOf, submission } from './state.js';
 import { WORLDS, FIELDS, DEFAULTS, CAFE_REFUSAL, cafeWords, icon } from './worlds.js';
 import { renderBoard as drawBoard, renderOverlay, NODE_W, NODE_H } from './board.js';
 import { fx, SPEED, startFx, sizeCanvas, resetFx, invalidateColors } from './fx.js';
@@ -12,7 +12,7 @@ import { drawMap, mapMorning, cellLabel } from './survival-panel.js';
 
 /* ---------- Header and palette ---------- */
 function renderTabs() {
-  document.getElementById('day-label').textContent = `Day ${L().n} · ${L().name}`;
+  document.getElementById('day-label').textContent = `${world() === 'cafe' ? 'Day' : 'Lab'} ${L().n} · ${L().name}`;
   document.getElementById('tabs').innerHTML = LEVELS.map((l) => {
     const st = stars(l.id);
     return `<button class="tab" ${S.level === l.id ? 'aria-current="page"' : ''} data-level="${l.id}"><span class="chapter-number">${String(l.n).padStart(2, '0')}</span><span class="chapter-copy"><b>${esc(l.name)}</b><small>${esc(l.concept)}</small></span><span class="stars" aria-label="${st.filter(Boolean).length} of 3 stars">${st.map((x) => x ? '★' : '☆').join('')}</span></button>`;
@@ -25,22 +25,35 @@ function renderTabs() {
 
 function renderMission() {
   const sc = scene().scenario, cafe = world() === 'cafe';
+  const brand = document.querySelector('.brand');
+  brand.innerHTML = `<span aria-hidden="true">${cafe ? '☕' : icon('software', 'server')}</span><b>Little Systems <em>${cafe ? 'Café' : 'Lab'}</em></b>`;
+  brand.setAttribute('aria-label', `Little Systems ${cafe ? 'Café' : 'Lab'} home`);
+  document.title = cafe ? 'Little Systems Café' : 'Little Systems Lab';
+  document.querySelector('.skip-link').textContent = cafe ? 'Skip to the café floor' : 'Skip to the system';
+  document.getElementById('main').setAttribute('aria-label', cafe ? 'Interactive café floor' : 'Interactive system topology');
+  document.querySelector('.board-scroll').setAttribute('aria-label', cafe ? 'Café floor. Scroll to explore, or use Fit floor.' : 'System topology. Scroll to explore, or use Fit view.');
+  document.querySelector('#equipment-menu > summary').textContent = cafe ? '＋ Equipment' : '＋ Components';
+  document.getElementById('fit-floor').textContent = cafe ? 'Fit floor' : 'Fit view';
+  document.getElementById('zoom-floor').setAttribute('aria-label', cafe ? 'Zoom in on the floor' : 'Zoom in on the system');
+  document.getElementById('board-help').textContent = cafe ? 'Tap Adjust settings to make a change · Drag equipment to arrange · Pull a dot to connect' : 'Adjust settings to configure · Drag components to arrange · Pull a port to connect';
   const unit = cafe ? 'customers/min' : 'requests/s', scale = W().scale;
   const base = (sc.base.reads + sc.base.writes) / scale;
   const shock = sc.spike ? ` → ${(sc.spike.reads + sc.spike.writes) / scale} at ${W().clock(sc.spike.t)}`
     : sc.serverFail ? ` · one ${cafe ? 'barista leaves' : 'server fails'} at ${W().clock(sc.serverFail.t)}`
       : sc.cacheFlush ? ` · ${cafe ? 'fridge empties' : 'cache restarts'} at ${W().clock(sc.cacheFlush.t)}` : '';
-  document.getElementById('chapter-marker').textContent = cafe ? `A small experiment · Day ${L().n}` : `Same idea · New names`;
+  document.getElementById('chapter-marker').textContent = cafe ? `A small experiment · Day ${L().n}` : `Software lab ${L().n} · ${L().concept}`;
   document.getElementById('mission-title').textContent = scene().title;
   document.getElementById('mission-sub').textContent = `${base} ${unit}${shock}. ${cafe ? 'Make the morning work.' : 'Build a system that holds up.'}`;
 }
 
+let cameraReady = false;
 function fitFloor(force = false) {
   const view = document.getElementById('board-scroll') || document.querySelector('.board-scroll');
   if (!view) return;
   const fitted = Math.min(1.1, view.clientWidth / 900, Math.max(180, view.clientHeight) / 400);
   S.zoom = force ? fitted : Math.max(view.clientWidth < 700 ? .68 : .8, fitted);
   document.getElementById('stage-space').style.setProperty('--zoom', S.zoom);
+  cameraReady = true;
 }
 
 function setTask(phase) {
@@ -48,7 +61,7 @@ function setTask(phase) {
   document.getElementById('equipment-menu').open = false;
   document.getElementById('connection-tools').open = false;
   document.querySelector('.chapter-menu').open = false;
-  renderSide(); renderOverlay(); updateWorkbench();
+  renderBoard(); renderSide(); renderOverlay(); updateWorkbench();
   if (phase === 'predict') document.getElementById('p-block')?.focus();
   if (phase === 'submit') document.getElementById('p-tests')?.focus();
   if (phase === 'build') document.querySelector('#side .btn.primary')?.focus({ preventScroll: true });
@@ -66,7 +79,14 @@ function renderBoard() {
   const active = document.activeElement;
   const nodeId = active?.matches('.node[data-node]') ? active.dataset.node : null;
   const portId = active?.dataset.port;
+  const editId = active?.dataset.editNode;
   drawBoard();
+  const legend = document.getElementById('flow-legend');
+  if (legend) {
+    legend.hidden = !run() || !!run().stale;
+    const words = world() === 'cafe' ? ['Arriving', 'Waiting', 'Coffee in hand'] : ['Requests', 'Queued', 'Completed'];
+    legend.querySelectorAll('span').forEach((el, i) => { el.textContent = words[i]; });
+  }
   document.querySelectorAll('.node[data-node]:not(.traffic)').forEach((node) => {
     node.setAttribute('role', 'group');
     node.setAttribute('aria-describedby', 'board-help');
@@ -74,6 +94,7 @@ function renderBoard() {
   });
   document.querySelectorAll('[data-port]').forEach((port) => { port.disabled = isPlaying(); });
   if (portId) document.querySelector(`[data-port="${portId}"]`)?.focus({ preventScroll: true });
+  else if (editId) document.querySelector(`[data-edit-node="${editId}"]`)?.focus({ preventScroll: true });
   else if (nodeId) document.querySelector(`[data-node="${nodeId}"]`)?.focus({ preventScroll: true });
 }
 
@@ -146,7 +167,8 @@ function updateRunReadiness() {
 function updateWorkbench() {
   renderConnections(); renderEditTools();
   const playing = isPlaying();
-  document.querySelectorAll('[data-add], #connection-body button, #connection-body select, [data-field], #del-block, #del-wire, #p-tests, [data-watch], [data-cell], #map-open').forEach((el) => {
+  document.getElementById('app').dataset.playing = String(playing && !run().paused);
+  document.querySelectorAll('[data-add], [data-edit-node], #connection-body button, #connection-body select, [data-field], #del-block, #del-wire, #p-tests, [data-watch], [data-cell], #map-open').forEach((el) => {
     el.disabled = playing || (el.id === 'connect-btn' && !design().blocks.length);
   });
   updateRunReadiness();
@@ -156,10 +178,10 @@ function updateWorkbench() {
 function renderAll() {
   const focusedId = document.activeElement?.id;
   document.documentElement.setAttribute('data-world', world());
-  fx.playing = isPlaying();
+  fx.playing = isPlaying() && !run().paused;
   invalidateColors();
   renderTabs(); renderPalette(); renderBoard(); renderOverlay(); renderRun(); renderSide(); updateWorkbench();
-  requestAnimationFrame(() => fitFloor());
+  requestAnimationFrame(() => { if (!cameraReady) fitFloor(); });
   if (focusedId) document.getElementById(focusedId)?.focus({ preventScroll: true });
 }
 
@@ -259,24 +281,22 @@ function watchTest(t) {
 }
 
 function play(k, log, stale = false, meta = {}) {
-  const r = { log, t: 0, done: false, stale, ...meta };
+  const r = { log, t: 0, done: false, stale, paused: reducedMotion(), elapsedMs: 0, lastFrame: performance.now(), ...meta };
   clearTimeout(toastTimer); S.toast = null; renderOverlay();
   S.runs[k] = r; S.hoverT = null;
   resetFx();
   const N = log.ticks.length;
   renderBoard(); renderRun(); renderSide(); updateWorkbench();
-  if (reducedMotion()) { r.t = N - 1; r.done = true; renderAll(); document.querySelector('#side .btn.primary')?.focus({ preventScroll: true }); return; }
-  fx.playing = true;
-  const start = performance.now();
+  fx.playing = !r.paused;
   function step(now) {
     if (S.runs[k] !== r || r.done) return;
-    const nextTick = playbackTick(now, start, SPEED, N);
+    const nextTick = advancePlayback(r, now, SPEED, N);
     if (nextTick !== r.t) {
       r.t = nextTick;
       if (key() === k) { renderBoard(); renderRunBody(); }
     }
     if (r.t < N - 1) requestAnimationFrame(step);
-    else { r.done = true; if (key() === k) { renderAll(); document.querySelector('#side .btn.primary')?.focus({ preventScroll: true }); } else renderTabs(); }
+    else { r.done = true; r.paused = false; if (key() === k) { renderAll(); document.querySelector('#side .btn.primary')?.focus({ preventScroll: true }); } else renderTabs(); }
   }
   requestAnimationFrame(step);
 }
@@ -328,12 +348,33 @@ document.addEventListener('click', (e) => {
   const add = e.target.closest('[data-add]');
   if (add) { addBlock(add.dataset.add); return; }
   const id = action?.id || e.target.id;
+  if (action?.dataset.editNode) {
+    if (isPlaying()) return;
+    endDesignEdit();
+    S.sel = { kind: 'block', id: action.dataset.editNode };
+    S.labPhase[key()] = 'build';
+    renderBoard(); renderSide(); updateWorkbench();
+    document.querySelector('.inspector-sheet input, .inspector-sheet select, #done-edit')?.focus({ preventScroll: true });
+    return;
+  }
   const phases = { 'predict-open': 'predict', 'submit-open': 'submit', 'review-open': 'review', 'brief-open': 'brief', 'return-build': 'build', 'submission-open': 'submission', 'close-task': 'build', 'done-edit': 'build' };
   if (phases[id]) { setTask(phases[id]); return; }
   if (id === 'equipment-open') { document.getElementById('equipment-menu').open = true; document.querySelector('[data-add]')?.focus(); return; }
   if (id === 'fit-floor') { fitFloor(true); return; }
   if (id === 'zoom-floor') { S.zoom = Math.min(1.5, S.zoom + .2); document.getElementById('stage-space').style.setProperty('--zoom', S.zoom); return; }
-  if (id === 'skip-run') { const r = run(); if (r) { r.t = r.log.ticks.length - 1; r.done = true; fx.playing = false; renderAll(); } return; }
+  if (id === 'toggle-playback' && isPlaying()) {
+    const r = run(); r.paused = !r.paused; r.lastFrame = performance.now(); fx.playing = !r.paused;
+    renderSide(); updateWorkbench(); document.getElementById('toggle-playback')?.focus({ preventScroll: true }); return;
+  }
+  if (id === 'step-flow' && isPlaying()) {
+    const r = run(); r.paused = true; fx.playing = false;
+    r.t = r.log.events.find((event) => event.t > r.t)?.t ?? r.log.ticks.length - 1;
+    r.elapsedMs = r.t * 1000 / SPEED; r.lastFrame = performance.now();
+    if (r.t >= r.log.ticks.length - 1) { r.done = true; r.paused = false; renderAll(); }
+    else { renderBoard(); renderRunBody(); renderSide(); updateWorkbench(); document.getElementById('step-flow')?.focus({ preventScroll: true }); }
+    return;
+  }
+  if (id === 'skip-run') { const r = run(); if (r) { r.t = r.log.ticks.length - 1; r.done = true; r.paused = false; fx.playing = false; renderAll(); } return; }
   if (action?.dataset.adjust) {
     const field = document.getElementById(action.dataset.adjust);
     field.stepUp(Number(action.dataset.delta)); field.dispatchEvent(new Event('input', { bubbles: true })); return;
@@ -462,7 +503,7 @@ document.addEventListener('pointerdown', (e) => {
   });
   const stage = document.getElementById('stage');
   if (!stage.contains(e.target) || isPlaying()) return;
-  if (e.target.closest('[data-add]')) return;
+  if (e.target.closest('[data-add], [data-edit-node]')) return;
   endDesignEdit();
   const d = design(), rect = stage.getBoundingClientRect(), pos = point(e, rect);
   const port = e.target.closest('[data-port]');
@@ -568,8 +609,15 @@ document.addEventListener('toggle', (e) => {
   }
 }, true);
 
-let rz = null;
-window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { sizeCanvas(); fitFloor(); renderRunBody(); }, 120); });
+let rz = null, cameraWidth = window.innerWidth;
+window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { sizeCanvas(); if (window.innerWidth !== cameraWidth) { cameraWidth = window.innerWidth; fitFloor(); } renderRunBody(); }, 120); });
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && isPlaying()) {
+    run().paused = true; run().lastFrame = performance.now(); fx.playing = false;
+    renderSide(); updateWorkbench();
+  }
+});
 
 startFx(document.getElementById('fx'));
 renderAll();
