@@ -1,6 +1,6 @@
 // Entry point: header, palette, actions and input handling. Wires the render registry R.
 import { simulate, validate, canWire, blockCost, REFUSAL } from '../sim/sim.js';
-import { LEVELS, TRACKS } from '../levels/levels.js';
+import { LEVELS, TRACKS, UPCOMING } from '../levels/levels.js';
 import { grade } from '../levels/grade.js';
 import { S, R, L, W, world, key, scene, design, run, attempts, typeOf, simDesign, stars, chapterDone, nameOf, clone, esc, reducedMotion, rememberDesign, endDesignEdit, historyStatus, restoreDesign, resetDesign, advancePlayback, starterOf, submission } from './state.js';
 import { WORLDS, FIELDS, DEFAULTS, CAFE_REFUSAL, cafeWords, icon } from './worlds.js';
@@ -59,7 +59,18 @@ function progressOf(l) {
 }
 
 function topicDetailHtml(l) {
+// A chapter we have not built yet: what it will teach and which foundations it combines, with no Start.
+function soonDetailHtml(u) {
+  const ready = u.principles.map((x) => LEVELS.find((l) => l.track === 'foundations' && l.principles?.length === 1 && l.principles[0] === x));
+  return `<div class="topic-detail-head"><span class="topic-kicker">${esc(TRACKS.find((x) => x.id === u.track).name)}</span><span class="topic-status soon">Coming soon</span></div>
+    <h2 id="topic-detail-title">${esc(u.name)}</h2>
+    <p class="topic-idea">${esc(u.idea)}</p>
+    <dl class="topic-facts"><dt>Uses</dt><dd class="chips">${u.principles.map((x, i) => `<span>${esc(PRINCIPLE_NAME[x])}${ready[i] && chapterDone(ready[i]) ? ' ✓' : ''}</span>`).join('')}</dd><dt>Opens in</dt><dd>Software lab</dd></dl>
+    <button class="btn primary" disabled>Coming soon</button>`;
+}
+
   const t = l.topic, p = progressOf(l), sw = l.firstScene === 'software';
+  if (!l.scenes) return soonDetailHtml(l);
   const opensIn = sw ? 'Software lab' : 'Coffee shop, then software';
   const pairs = l.capstone
     ? `<dl class="topic-facts"><dt>Uses</dt><dd class="chips">${l.principles.map((x) => `<span>${esc(PRINCIPLE_NAME[x])}</span>`).join('')}</dd><dt>Opens in</dt><dd>${opensIn}</dd><dt>Trade-off</dt><dd>${esc(t.tradeoff.software)}</dd></dl>`
@@ -83,7 +94,11 @@ export function topicCardsHtml(sel) {
           <span class="topic-text"><b>${esc(l.topic.name)}</b><small>${esc(l.hook)}</small></span>
           <span class="topic-stars" aria-label="${p.st.filter(Boolean).length} of 3 stars">${p.st.map((x) => (x ? '★' : '☆')).join('')}</span>
         </button></li>`;
-    }).join('');
+    }).join('') + UPCOMING.filter((u) => u.track === tr.id).map((u) => `<li><button class="topic-row soon${u.id === sel ? ' sel' : ''}" data-topic-pick="${u.id}" aria-pressed="${u.id === sel}">
+          <span class="topic-num" aria-hidden="true">·</span>
+          <span class="topic-text"><b>${esc(u.name)}</b><small>${esc(u.hook)}</small></span>
+          <span class="topic-tag">Soon</span>
+        </button></li>`).join('');
     return `<section class="track" aria-labelledby="track-${tr.id}"><div class="track-head"><h2 id="track-${tr.id}">${esc(tr.name)}</h2><span>${done} of ${items.length} done</span></div><p class="track-blurb">${esc(tr.blurb)}</p><ol class="topic-list">${rows}</ol></section>`;
   }).join('');
 }
@@ -93,7 +108,7 @@ function renderTopics() {
   el.hidden = !S.topicsOpen;
   document.getElementById('app').inert = S.topicsOpen;
   if (!S.topicsOpen) return;
-  const sel = LEVELS.find((l) => l.id === S.topicSel) || LEVELS.find((l) => !chapterDone(l)) || LEVELS[0];
+  const sel = [...LEVELS, ...UPCOMING].find((l) => l.id === S.topicSel) || LEVELS.find((l) => !chapterDone(l)) || LEVELS[0];
   el.innerHTML = `<section class="topics-panel" role="dialog" aria-modal="true" aria-labelledby="topics-title">
       <header class="topics-head">
         <div><p class="eyebrow">Little Systems</p><h1 id="topics-title">What do you want to learn?</h1></div>
@@ -195,7 +210,7 @@ function connectionMessage(text) {
 function predictionReady() {
   const p = S.pred[key()] || {};
   return (p.block === 'none' || design().blocks.some((b) => b.id === p.block))
-    && String(p.value ?? '').trim() !== '' && Number.isFinite(Number(p.value)) && Number(p.value) >= 0
+    && String(p.value ?? '0').trim() !== '' && Number.isFinite(Number(p.value ?? 0)) && Number(p.value ?? 0) >= 0
     && Array.from(document.querySelectorAll('[data-field][type="number"]')).every((input) =>
       input.value !== '' && Number.isFinite(input.valueAsNumber) && input.validity.valid);
 }
@@ -332,7 +347,7 @@ function startRun() {
   const metric = log.metrics[sn.predict.key];
   const actual = sn.predict.key === 'recoverySeconds' && log.metrics.recoveryNeverEnded
     ? Infinity : metric == null ? null : metric / predScale();
-  const guess = parseFloat(p.value);
+  const guess = parseFloat(p.value ?? '0');
   const actualBlock = log.result.firstFailure ? log.result.firstFailure.block : 'none';
   attempts().push({ guessBlock: p.block, actualBlock, blockRight: p.block === actualBlock, guess, actual, err: predError(guess, actual), passed: log.result.passed });
   S.pred[key()] = {}; S.hint[key()] = 0; S.sel = null; S.buildFocus[key()] = null; S.labPhase[key()] = 'review';
@@ -590,7 +605,7 @@ document.addEventListener('input', (e) => {
       const def = (FIELDS[b.type] || []).find((x) => x.key === k);
       const s = def.scaled ? W().scale : 1;
       let v = parseFloat(t.value); if (!isFinite(v)) { updateRunReadiness(); return; }
-      v = Math.max(def.min, v * s); if (def.int) v = Math.round(v);
+      v = Math.min(def.max ?? Infinity, Math.max(def.min, v * s)); if (def.int) v = Math.round(v);
       if (b[k] === v) { updateRunReadiness(); return; }
       rememberDesign(`${b.id}:${k}`); b[k] = v;
     }

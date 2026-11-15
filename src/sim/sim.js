@@ -33,12 +33,16 @@ const REFUSAL = {
   database: 'A database is the end of the line. It answers requests and sends none on.'
 };
 
+// Every machine has a fixed cost on top of its capacity: a barista's base wage, a server's overhead. So many
+// tiny copies are not free, and one big copy has no spare: the cheapest answer sits between them.
+const COPY_COST = 0.05;
+
 function blockCost(b) {
   switch (b.type) {
-    case 'server': return 0.1 * (b.capacity / 100) * b.copies;
+    case 'server': return (0.1 * (b.capacity / 100) + COPY_COST) * b.copies;
     case 'loadBalancer': return 0.05;
     case 'cache': return CACHE_SIZES[b.size].cost;
-    case 'database': return 0.1 * (b.readCapacity / 100) * (1 + b.replicas) + 0.1 * (b.writeCapacity / 100);
+    case 'database': return (0.1 * (b.readCapacity / 100) + COPY_COST) * (1 + b.replicas) + 0.1 * (b.writeCapacity / 100);
     case 'queue': return 0.05 + 0.05 * (b.workers * b.workerRate) / 100;
     default: return 0;
   }
@@ -369,5 +373,5 @@ function simulate(d, sc) {
   };
 }
 
-export const Sim = { simulate, validate, canWire, blockCost, designCost, trafficAt, CACHE_SIZES, TYPE_NAME, BASE_MS, REFUSAL };
-export { simulate, validate, canWire, blockCost, designCost, trafficAt, CACHE_SIZES, TYPE_NAME, BASE_MS, REFUSAL };
+export const Sim = { simulate, validate, canWire, blockCost, designCost, trafficAt, CACHE_SIZES, TYPE_NAME, BASE_MS, REFUSAL, COPY_COST };
+export { simulate, validate, canWire, blockCost, designCost, trafficAt, CACHE_SIZES, TYPE_NAME, BASE_MS, REFUSAL, COPY_COST };

@@ -17,10 +17,39 @@
 const PRIMER = 'https://github.com/donnemartin/system-design-primer';
 const SCALE = 50;
 
+// Nothing scales forever. Each block has a ceiling per copy, in software units (the coffee shop divides by
+// SCALE), so past it the only way up is a different paradigm: more server copies behind a load balancer,
+// read replicas for reads, a queue for writes. A barista has two hands; one database primary takes every
+// write, and replicas only add reads. The inspector stops at these and the best-design search respects them.
+const LIMITS = {
+  server: { capacity: 300 },
+  database: { readCapacity: 300, writeCapacity: 150 }
+};
+
 // Tracks group chapters on the topic picker, in order. A new chapter joins a track by naming it in `track`.
 const TRACKS = [
   { id: 'foundations', name: 'Foundations', blurb: 'One idea at a time. Make it work in a coffee shop, then build the same thing as software.' },
   { id: 'systems', name: 'Real systems', blurb: 'Interview-style problems that need several foundations at once. Built straight in the software lab.' }
+];
+
+// Chapters we are building next. They show in the topic picker as "Coming soon" and cannot be played yet.
+// When one is ready, it moves into LEVELS with scenes, tests and a map.
+const UPCOMING = [
+  {
+    id: 'soon-shortener', track: 'systems', principles: ['caching', 'scaling'],
+    name: 'Design a URL shortener', hook: 'A billion clicks on a handful of links.',
+    idea: 'Most traffic is reads of the same few short links. Keep them in a cache so the database only sees new links and the rare miss.'
+  },
+  {
+    id: 'soon-checkout', track: 'systems', principles: ['async', 'redundancy'],
+    name: 'Design a store checkout', hook: 'A flash sale, and no order may be lost.',
+    idea: 'Take the order the moment someone pays, then let a queue charge, reserve stock and email them at a pace the back end can keep, even while one part is down.'
+  },
+  {
+    id: 'soon-streaming', track: 'systems', principles: ['caching', 'redundancy', 'scaling'],
+    name: 'Design a video streaming service', hook: 'Everyone presses play when the new season drops.',
+    idea: 'Serve popular videos from caches close to viewers, keep spare copies of every server, and size for the evening peak rather than the daily average.'
+  }
 ];
 
 const LEVELS = [
@@ -52,8 +81,8 @@ const LEVELS = [
       cafe: {
         title: 'The 8:00 train',
         brief: 'One barista makes 2 drinks a minute. Normally 1.2 customers walk in each minute. At 8:00 a commuter train pulls in, and for 20 minutes 4 customers arrive every minute.',
-        goal: 'Keep nearly everyone’s wait under 5 minutes, for $50 an hour or less.',
-        constraints: ['Normal mornings: 1.2 customers a minute.', 'A rush can reach 4.8 customers a minute and last up to 40 minutes.', 'A rush can come at any time before 9:00.', 'A barista costs $20 an hour for every 2 drinks a minute they make.'],
+        goal: 'Keep nearly everyone’s wait under 5 minutes, for $60 an hour or less.',
+        constraints: ['Normal mornings: 1.2 customers a minute.', 'A rush can reach 4.8 customers a minute and last up to 40 minutes.', 'A rush can come at any time before 9:00.', 'A barista costs $10 an hour, plus $20 for every 2 drinks a minute they make, and nobody makes more than 6 a minute.'],
         predict: { key: 'recoverySeconds', scale: 1, question: 'The rush ends at 8:20. How many minutes until the line is gone?', unit: 'min' },
         hints: [
           'For 20 minutes, 4 people arrived each minute and only 2 got served. How long is the line at 8:20?',
@@ -62,14 +91,14 @@ const LEVELS = [
         ],
         scenario: {
           duration: 150, base: { reads: 60, writes: 0 }, spike: { t: 30, dur: 20, reads: 200, writes: 0 },
-          latencyTargetMs: 5000, targets: { errorRate: 0.01, slowShare: 0.05, cost: 0.25 }
+          latencyTargetMs: 5000, targets: { errorRate: 0.01, slowShare: 0.05, cost: 0.3 }
         }
       },
       software: {
         title: 'A post goes viral',
         brief: 'One server handles 100 requests a second. Normal traffic is 60 a second. At 0:30 a post goes viral and traffic jumps to 200 a second for 20 seconds.',
-        goal: 'Keep slow requests under 5% for $0.25 an hour or less.',
-        constraints: ['Normal traffic: 60 requests a second.', 'A spike can reach 240 requests a second and last up to 40 seconds.', 'A spike can start at any time before 1:30.', 'A server costs $0.10 an hour per 100 requests a second of capacity.'],
+        goal: 'Keep slow requests under 5% for $0.30 an hour or less.',
+        constraints: ['Normal traffic: 60 requests a second.', 'A spike can reach 240 requests a second and last up to 40 seconds.', 'A spike can start at any time before 1:30.', 'A server costs $0.05 an hour, plus $0.10 per 100 requests a second of capacity, up to 300 a second per server.'],
         predict: { key: 'recoverySeconds', scale: 1, question: 'The spike ends at 0:50. How many seconds until the queue is empty?', unit: 's' },
         hints: [
           'This is the coffee shop with different units. What did the line do after the train left?',
@@ -78,7 +107,7 @@ const LEVELS = [
         ],
         scenario: {
           duration: 150, base: { reads: 60, writes: 0 }, spike: { t: 30, dur: 20, reads: 200, writes: 0 },
-          latencyTargetMs: 200, targets: { errorRate: 0.01, slowShare: 0.05, cost: 0.25 }
+          latencyTargetMs: 200, targets: { errorRate: 0.01, slowShare: 0.05, cost: 0.3 }
         }
       }
     }
@@ -115,8 +144,8 @@ const LEVELS = [
       cafe: {
         title: 'One barista calls in sick',
         brief: 'Your shop is empty: hire it from scratch. 4.8 customers walk in every minute, and one barista makes 2 drinks a minute. At 8:10 one barista goes home sick for an hour. A shared line sends each customer to the next free barista.',
-        goal: 'Lose fewer than 1% of customers, for $100 an hour or less.',
-        constraints: ['Normal mornings: 4.8 customers a minute. Busy days reach 5.6.', 'One barista may be out sick for up to 90 minutes, starting as early as 7:40.', 'A barista costs $20 an hour for every 2 drinks a minute. A shared line costs $10 an hour.', 'Customers leave when the line at their barista is full.'],
+        goal: 'Lose fewer than 1% of customers, for $140 an hour or less.',
+        constraints: ['Normal mornings: 4.8 customers a minute. Busy days reach 5.6.', 'One barista may be out sick for up to 90 minutes, starting as early as 7:40.', 'A barista costs $10 an hour, plus $20 for every 2 drinks a minute, up to 6 a minute each. A shared line costs $10 an hour.', 'Customers leave when the line at their barista is full.'],
         predict: { key: 'peakErrorRate', scale: 1, question: 'In the worst minute, what share of customers walk out?', unit: '%' },
         hints: [
           'With two baristas left, how many drinks a minute can the shop make? How does that compare with 4.8 customers?',
@@ -125,14 +154,14 @@ const LEVELS = [
         ],
         scenario: {
           duration: 150, base: { reads: 200, writes: 40 }, serverFail: { t: 40, dur: 60 },
-          latencyTargetMs: 5000, targets: { errorRate: 0.01, slowShare: 0.05, cost: 0.5 }
+          latencyTargetMs: 5000, targets: { errorRate: 0.01, slowShare: 0.05, cost: 0.7 }
         }
       },
       software: {
         title: 'One copy crashes',
         brief: 'Traffic is 240 requests a second, and each copy of a server handles 100. At 0:40 one copy crashes for 60 seconds. A load balancer spreads requests across the copies behind it.',
-        goal: 'Keep errors under 1% through the crash, for $0.50 an hour or less.',
-        constraints: ['Normal traffic: 240 requests a second. Peak days reach 280.', 'One copy may crash for up to 90 seconds, as early as 0:10.', 'A server costs $0.10 an hour per 100 requests a second, per copy. A load balancer costs $0.05.', 'Requests are dropped when a copy’s queue is full.'],
+        goal: 'Keep errors under 1% through the crash, for $0.70 an hour or less.',
+        constraints: ['Normal traffic: 240 requests a second. Peak days reach 280.', 'One copy may crash for up to 90 seconds, as early as 0:10.', 'Each server copy costs $0.05 an hour, plus $0.10 per 100 requests a second, up to 300 a second each. A load balancer costs $0.05.', 'Requests are dropped when a copy’s queue is full.'],
         predict: { key: 'peakErrorRate', scale: 1, question: 'At the worst second, what share of requests fail?', unit: '%' },
         hints: [
           'This is the sick day again. How much capacity is left when one copy is gone?',
@@ -141,7 +170,7 @@ const LEVELS = [
         ],
         scenario: {
           duration: 150, base: { reads: 200, writes: 40 }, serverFail: { t: 40, dur: 60 },
-          latencyTargetMs: 300, targets: { errorRate: 0.01, slowShare: 0.05, cost: 0.5 }
+          latencyTargetMs: 300, targets: { errorRate: 0.01, slowShare: 0.05, cost: 0.7 }
         }
       }
     }
@@ -183,8 +212,8 @@ const LEVELS = [
       cafe: {
         title: 'The fridge sells out',
         brief: 'You have an espresso machine that makes 6 drinks a minute. 20 customers come in each minute, and every customer pays at a barista first. A grab-and-go fridge of bottled cold brew could serve 9 in 10 of them. At 8:10 the fridge sells out, and restocking takes 30 minutes.',
-        goal: 'Lose fewer than 1% of customers and keep waits under 5 minutes, for $550 an hour or less.',
-        constraints: ['Normal mornings: 20 customers a minute. Busy mornings reach 22.', 'The fridge can sell out at any time; restocking takes 30 minutes.', 'An extra espresso machine adds 6 drinks a minute for $60 an hour.', 'A barista costs $20 an hour for every 2 customers a minute they serve.'],
+        goal: 'Lose fewer than 1% of customers and keep waits under 5 minutes, for $580 an hour or less.',
+        constraints: ['Normal mornings: 20 customers a minute. Busy mornings reach 22.', 'The fridge can sell out at any time; restocking takes 30 minutes.', 'Each espresso machine costs $10 an hour plus $20 for every 2 drinks a minute, and no machine makes more than 6.', 'A barista costs $10 an hour plus $20 for every 2 customers a minute they serve, up to 6 a minute each.'],
         predict: { key: 'dbReadLoadAfterFlush', scale: SCALE, question: 'The minute the fridge is empty, how many customers a minute queue at the espresso machine?', unit: '/min' },
         hints: [
           'Before 8:10, 1 in 10 customers needed the espresso machine. How many need it once the fridge is empty?',
@@ -193,14 +222,14 @@ const LEVELS = [
         ],
         scenario: {
           duration: 150, base: { reads: 1000, writes: 0 }, cacheFlush: { t: 40, warm: 30 },
-          latencyTargetMs: 5000, targets: { errorRate: 0.01, slowShare: 0.05, cost: 2.75 }
+          latencyTargetMs: 5000, targets: { errorRate: 0.01, slowShare: 0.05, cost: 2.9 }
         }
       },
       software: {
         title: 'The cache restarts empty',
         brief: 'You have a database that handles 300 reads a second. Traffic is 1,000 reads a second, and every request goes through an app server first. A cache could answer 90% of reads. At 0:40 the cache restarts empty and takes 30 seconds to warm up.',
-        goal: 'Keep errors under 1% and slow requests under 5%, for $2.75 an hour or less.',
-        constraints: ['Normal traffic: 1,000 reads a second. Busy days reach 1,100.', 'The cache can restart at any time; it takes 30 seconds to warm up.', 'A read replica adds 300 reads a second for $0.30 an hour.', 'A server costs $0.10 an hour per 100 requests a second.'],
+        goal: 'Keep errors under 1% and slow requests under 5%, for $2.90 an hour or less.',
+        constraints: ['Normal traffic: 1,000 reads a second. Busy days reach 1,100.', 'The cache can restart at any time; it takes 30 seconds to warm up.', 'Each database machine, the primary or a read replica, costs $0.05 an hour plus $0.10 per 100 reads a second, up to 300 each.', 'Each server copy costs $0.05 an hour plus $0.10 per 100 requests a second, up to 300 a second each.'],
         predict: { key: 'dbReadLoadAfterFlush', scale: 1, question: 'In the second after the restart, how many reads a second reach the database?', unit: 'req/s' },
         hints: [
           'This is the empty fridge. What share of reads miss the cache in the first second?',
@@ -209,7 +238,7 @@ const LEVELS = [
         ],
         scenario: {
           duration: 150, base: { reads: 1000, writes: 0 }, cacheFlush: { t: 40, warm: 30 },
-          latencyTargetMs: 200, targets: { errorRate: 0.01, slowShare: 0.05, cost: 2.75 }
+          latencyTargetMs: 200, targets: { errorRate: 0.01, slowShare: 0.05, cost: 2.9 }
         }
       }
     }
@@ -250,8 +279,8 @@ const LEVELS = [
       cafe: {
         title: 'The free-drink promo',
         brief: 'The shop takes orders on its app, and a barista takes each order. The espresso machine makes 2 drinks a minute, and normally 1.2 app orders come in each minute. At 8:00 a free-drink promo goes out, and for 20 minutes 5 orders arrive every minute. If orders go straight to the machine, the app refuses new ones when 4 are already waiting.',
-        goal: 'Refuse fewer than 1% of orders and keep waits under 5 minutes, for $120 an hour or less.',
-        constraints: ['Normal mornings: 1.2 app orders a minute.', 'A promo can bring up to 6 orders a minute, for up to 30 minutes.', 'The espresso machine makes 2 drinks a minute, and nothing faster fits the budget.', 'A ticket rail costs $10 an hour plus $10 an hour for every 2 drinks a minute its baristas pull.'],
+        goal: 'Refuse fewer than 1% of orders and keep waits under 5 minutes, for $140 an hour or less.',
+        constraints: ['Normal mornings: 1.2 app orders a minute.', 'A promo can bring up to 6 orders a minute, for up to 30 minutes.', 'The espresso machine makes 2 app orders a minute. Even the fastest makes only 3, and extra machines only help walk-in drinks.', 'A ticket rail costs $10 an hour plus $10 an hour for every 2 drinks a minute its baristas pull.'],
         predict: { key: 'peakErrorRate', scale: 1, question: 'In the worst minute of the promo, what share of app orders get refused?', unit: '%' },
         hints: [
           'During the promo, 5 orders arrive each minute and the machine makes 2. Once 4 are waiting, where do the other 3 go?',
@@ -260,14 +289,14 @@ const LEVELS = [
         ],
         scenario: {
           duration: 150, base: { reads: 0, writes: 60 }, spike: { t: 30, dur: 20, reads: 0, writes: 250 },
-          latencyTargetMs: 5000, targets: { errorRate: 0.01, slowShare: 0.05, cost: 0.6 }
+          latencyTargetMs: 5000, targets: { errorRate: 0.01, slowShare: 0.05, cost: 0.7 }
         }
       },
       software: {
         title: 'A sign-up burst',
         brief: 'Every sign-up is a write, and every request goes through an app server. The database handles 100 writes a second, and normal traffic is 60 a second. At 0:30 a launch post sends 250 sign-ups a second for 20 seconds. Writes sent straight to the database wait in its queue, which holds at most 200.',
-        goal: 'Keep errors under 1% and slow requests under 5%, for $0.60 an hour or less.',
-        constraints: ['Normal traffic: 60 writes a second.', 'A burst can reach 300 writes a second, for up to 30 seconds.', 'The database handles 100 writes a second, and a bigger one does not fit the budget.', 'A queue costs $0.05 an hour plus $0.05 per 100 writes a second its workers drain.'],
+        goal: 'Keep errors under 1% and slow requests under 5%, for $0.70 an hour or less.',
+        constraints: ['Normal traffic: 60 writes a second.', 'A burst can reach 300 writes a second, for up to 30 seconds.', 'The database handles 100 writes a second. Even the biggest primary takes only 150, and replicas only add reads.', 'A queue costs $0.05 an hour plus $0.05 per 100 writes a second its workers drain.'],
         predict: { key: 'peakErrorRate', scale: 1, question: 'At the worst second of the burst, what share of writes fail?', unit: '%' },
         hints: [
           'This is the promo again. How many writes a second arrive, and how many can the database take?',
@@ -276,7 +305,7 @@ const LEVELS = [
         ],
         scenario: {
           duration: 150, base: { reads: 0, writes: 60 }, spike: { t: 30, dur: 20, reads: 0, writes: 250 },
-          latencyTargetMs: 300, targets: { errorRate: 0.01, slowShare: 0.05, cost: 0.6 }
+          latencyTargetMs: 300, targets: { errorRate: 0.01, slowShare: 0.05, cost: 0.7 }
         }
       }
     }
@@ -326,8 +355,8 @@ const LEVELS = [
       cafe: {
         title: 'Opening day',
         brief: 'Your second shop opens today, and you build it from scratch. 16 customers walk in each minute, and 0.8 more order on the app. Most want bottled cold brew; the espresso machine makes 6 drinks a minute and 2 app orders a minute. At 8:00 an influencer posts a free-drink code, and for 20 minutes 5 app orders arrive every minute. At 8:30 a barista goes home sick for 40 minutes.',
-        goal: 'Lose fewer than 1% of customers, keep waits under 5 minutes and make every app order by closing, for $430 an hour or less.',
-        constraints: ['Normal mornings: 16 customers a minute, busy ones 18, plus 0.8 app orders a minute.', 'A promo can bring up to 6 app orders a minute, for up to 25 minutes.', 'One barista may be out sick for up to an hour, at any time, even mid-promo.', 'The espresso machine makes 6 drinks and 2 app orders a minute. Every ticket on the rail must be made by closing.', 'Prices are the ones you know: $20 an hour per 2 a minute of barista, fridges from $10, an extra machine $60, a ticket rail from $10.'],
+        goal: 'Lose fewer than 1% of customers, keep waits under 5 minutes and make every app order by closing, for $500 an hour or less.',
+        constraints: ['Normal mornings: 16 customers a minute, busy ones 18, plus 0.8 app orders a minute.', 'A promo can bring up to 6 app orders a minute, for up to 25 minutes.', 'One barista may be out sick for up to an hour, at any time, even mid-promo.', 'The espresso machine makes 6 drinks and 2 app orders a minute. No machine makes more than 6 drinks or 3 app orders, and no barista more than 6 a minute. Every ticket on the rail must be made by closing.', 'Prices are the ones you know: each barista or espresso machine $10 an hour plus $20 per 2 a minute, a shared line $10, fridges from $10, a ticket rail from $10.'],
         predict: { key: 'peakErrorRate', scale: 1, question: 'In the worst minute, what share of customers walk out?', unit: '%' },
         hints: [
           'Count what reaches the espresso machine: 16 customers a minute against 6 drinks. What takes most of them off the machine?',
@@ -336,14 +365,14 @@ const LEVELS = [
         ],
         scenario: {
           duration: 150, base: { reads: 800, writes: 40 }, spike: { t: 30, dur: 20, reads: 800, writes: 250 }, serverFail: { t: 60, dur: 40 },
-          latencyTargetMs: 5000, targets: { errorRate: 0.01, slowShare: 0.05, cost: 2.15, drain: true }
+          latencyTargetMs: 5000, targets: { errorRate: 0.01, slowShare: 0.05, cost: 2.5, drain: true }
         }
       },
       software: {
         title: 'Design a Twitter timeline',
         brief: 'Build the timeline service from scratch. Users load 800 timelines a second and post 40 tweets a second. The database handles 300 reads and 100 writes a second, and most timeline reads ask for the same popular tweets. At 0:30 a celebrity tweets, and the fan-out writes 250 times a second for 20 seconds. At 1:00 one app server copy crashes for 40 seconds.',
-        goal: 'Keep errors under 1% and slow requests under 5%, and finish every queued write by the end, for $2.15 an hour or less.',
-        constraints: ['Normal traffic: 800 timeline reads a second, 900 on peak days, plus 40 tweets a second.', 'A fan-out burst can reach 300 writes a second, for up to 25 seconds.', 'One app server copy may crash for up to 60 seconds, at any time, even mid-burst.', 'The database handles 300 reads and 100 writes a second. Every queued write must be done by the end of the run.', 'Prices as before: servers $0.10 per 100/s per copy, a load balancer $0.05, caches from $0.05, a replica $0.30, a queue from $0.05.'],
+        goal: 'Keep errors under 1% and slow requests under 5%, and finish every queued write by the end, for $2.50 an hour or less.',
+        constraints: ['Normal traffic: 800 timeline reads a second, 900 on peak days, plus 40 tweets a second.', 'A fan-out burst can reach 300 writes a second, for up to 25 seconds.', 'One app server copy may crash for up to 60 seconds, at any time, even mid-burst.', 'The database handles 300 reads and 100 writes a second. No machine reads faster than 300 or writes faster than 150, replicas only add reads, and a server copy tops out at 300. Every queued write must be done by the end of the run.', 'Prices as before: each server copy or database machine $0.05 plus $0.10 per 100/s, a load balancer $0.05, caches from $0.05, a queue from $0.05.'],
         predict: { key: 'peakErrorRate', scale: 1, question: 'At the worst second, what share of requests fail?', unit: '%' },
         hints: [
           'Count what reaches the database: 800 reads a second against 300. What keeps repeated reads off it?',
@@ -352,11 +381,11 @@ const LEVELS = [
         ],
         scenario: {
           duration: 150, base: { reads: 800, writes: 40 }, spike: { t: 30, dur: 20, reads: 800, writes: 250 }, serverFail: { t: 60, dur: 40 },
-          latencyTargetMs: 300, targets: { errorRate: 0.01, slowShare: 0.05, cost: 2.15, drain: true }
+          latencyTargetMs: 300, targets: { errorRate: 0.01, slowShare: 0.05, cost: 2.5, drain: true }
         }
       }
     }
   }
 ];
 
-export { LEVELS, TRACKS, SCALE };
+export { LEVELS, TRACKS, UPCOMING, SCALE, LIMITS };

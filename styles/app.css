@@ -318,6 +318,12 @@ h1 { margin: 0; font: 500 clamp(24px, 2.6vw, 34px)/1.2 var(--display); letter-sp
 .topic-detail-head { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; color: var(--ink-3); }
 .topic-kicker { text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
 .topic-status.done { color: var(--ok); font-weight: 600; }
+.topic-row.soon .topic-text b { color: var(--ink-2); font-weight: 500; }
+.topic-row.soon .topic-text small { color: var(--ink-3); }
+.topic-tag { padding: 2px 8px; border: 1px dashed var(--line); border-radius: 999px; font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-3); }
+.topic-status.soon { color: var(--ink-3); }
+.topic-detail .btn.primary:disabled { opacity: .55; cursor: not-allowed; }
+[data-world="software"] .topic-tag { border-radius: 0; }
 .topic-detail h2 { margin: 10px 0 12px; font: 600 32px/1.1 var(--display); letter-spacing: -.02em; color: var(--ink); }
 .topic-detail .topic-idea { margin: 0 0 22px; font-size: 17px; line-height: 1.55; color: var(--ink); max-width: 46ch; }
 .topic-facts { display: grid; grid-template-columns: 110px 1fr; gap: 12px 16px; margin: 0 0 26px; padding: 18px 0 0; border-top: 1px solid var(--line); font-size: 14px; line-height: 1.5; }

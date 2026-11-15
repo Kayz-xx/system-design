@@ -82,7 +82,7 @@ test('wiring rules', () => {
 });
 
 test('queue block: absorbs a write burst, drains at the workers’ rate, and overflows when too slow', () => {
-  const sc = { duration: 150, base: { reads: 0, writes: 60 }, spike: { t: 30, dur: 20, reads: 0, writes: 250 }, latencyTargetMs: 300, targets: { errorRate: 0.01, slowShare: 0.05, cost: 0.6 } };
+  const sc = { duration: 150, base: { reads: 0, writes: 60 }, spike: { t: 30, dur: 20, reads: 0, writes: 250 }, latencyTargetMs: 300, targets: { errorRate: 0.01, slowShare: 0.05, cost: 0.75 } };
   const s = { id: 's1', type: 'server', name: 'App', capacity: 300, copies: 1, queueLimit: 2000 };
   const db = { id: 'db1', type: 'database', name: 'DB', readCapacity: 100, writeCapacity: 100, replicas: 0, queueLimit: 200 };
   const q = { id: 'q1', type: 'queue', name: 'Q', workers: 2, workerRate: 50, queueLimit: 5000 };

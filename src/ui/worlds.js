@@ -1,6 +1,6 @@
 // The two worlds a level is shown in. Everything world-specific (words, units, icons, costs) lives here.
 // The simulator always runs in software units; the cafe divides by SCALE and reads a tick as a minute.
-import { SCALE } from '../levels/levels.js';
+import { SCALE, LIMITS } from '../levels/levels.js';
 import { TYPE_NAME } from '../sim/sim.js';
 
 const fmtN = (n) => (isFinite(n) ? Math.round(n).toLocaleString('en-US') : '∞');
@@ -72,13 +72,13 @@ export const WORLDS = {
 // Inspector fields. `scaled` values are stored in software units and shown divided by the world's scale.
 export const FIELDS = {
   server: [
-    { key: 'capacity', cafe: 'Drinks a minute, each', software: 'Capacity per copy, req/s', scaled: true, step: 50, min: 50 },
+    { key: 'capacity', cafe: 'Drinks a minute, each', software: 'Capacity per copy, req/s', scaled: true, step: 50, min: 50, max: LIMITS.server.capacity },
     { key: 'copies', cafe: 'Baristas', software: 'Copies', step: 1, min: 1, int: true },
     { key: 'queueLimit', cafe: 'People who will wait', software: 'Queue limit', scaled: true, step: 50, min: 0 }
   ],
   database: [
-    { key: 'readCapacity', cafe: 'Drinks a minute', software: 'Reads, req/s', scaled: true, step: 50, min: 50 },
-    { key: 'writeCapacity', cafe: 'Order drinks a minute', software: 'Writes, req/s', scaled: true, step: 50, min: 50, writesOnly: true },
+    { key: 'readCapacity', cafe: 'Drinks a minute', software: 'Reads, req/s', scaled: true, step: 50, min: 50, max: LIMITS.database.readCapacity },
+    { key: 'writeCapacity', cafe: 'Order drinks a minute', software: 'Writes, req/s', scaled: true, step: 50, min: 50, max: LIMITS.database.writeCapacity, writesOnly: true },
     { key: 'replicas', cafe: 'Extra machines', software: 'Read replicas', step: 1, min: 0, int: true },
     { key: 'queueLimit', cafe: 'Orders that will wait', software: 'Queue limit', scaled: true, step: 50, min: 0 }
   ],

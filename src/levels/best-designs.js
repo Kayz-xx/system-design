@@ -3,7 +3,7 @@
 export const BEST = {
   'l1': {
     cafe: {
-      cost: 0.25,
+      cost: 0.3,
       design: {
         blocks: [
           {
@@ -24,7 +24,7 @@ export const BEST = {
       }
     },
     software: {
-      cost: 0.25,
+      cost: 0.3,
       design: {
         blocks: [
           {
@@ -47,7 +47,7 @@ export const BEST = {
   },
   'l2': {
     cafe: {
-      cost: 0.45,
+      cost: 0.65,
       design: {
         blocks: [
           {
@@ -59,8 +59,8 @@ export const BEST = {
             id: 's1',
             type: 'server',
             name: 'Server',
-            capacity: 100,
-            copies: 4,
+            capacity: 150,
+            copies: 3,
             queueLimit: 500
           }
         ],
@@ -77,7 +77,7 @@ export const BEST = {
       }
     },
     software: {
-      cost: 0.45,
+      cost: 0.65,
       design: {
         blocks: [
           {
@@ -89,8 +89,8 @@ export const BEST = {
             id: 's1',
             type: 'server',
             name: 'Server',
-            capacity: 100,
-            copies: 4,
+            capacity: 150,
+            copies: 3,
             queueLimit: 500
           }
         ],
@@ -109,15 +109,20 @@ export const BEST = {
   },
   'l3': {
     cafe: {
-      cost: 2.15,
+      cost: 2.5,
       design: {
         blocks: [
+          {
+            id: 'lb1',
+            type: 'loadBalancer',
+            name: 'Load balancer'
+          },
           {
             id: 's1',
             type: 'server',
             name: 'Server',
-            capacity: 1100,
-            copies: 1,
+            capacity: 300,
+            copies: 4,
             queueLimit: 500
           },
           {
@@ -127,7 +132,7 @@ export const BEST = {
               cafe: 'Espresso machine',
               software: 'Database'
             },
-            readCapacity: 300,
+            readCapacity: 250,
             writeCapacity: 100,
             replicas: 2,
             queueLimit: 2000,
@@ -145,6 +150,10 @@ export const BEST = {
         wires: [
           [
             'traffic',
+            'lb1'
+          ],
+          [
+            'lb1',
             's1'
           ],
           [
@@ -163,15 +172,20 @@ export const BEST = {
       }
     },
     software: {
-      cost: 2.4,
+      cost: 2.8,
       design: {
         blocks: [
+          {
+            id: 'lb1',
+            type: 'loadBalancer',
+            name: 'Load balancer'
+          },
           {
             id: 's1',
             type: 'server',
             name: 'Server',
-            capacity: 1100,
-            copies: 1,
+            capacity: 300,
+            copies: 4,
             queueLimit: 500
           },
           {
@@ -181,22 +195,40 @@ export const BEST = {
               cafe: 'Espresso machine',
               software: 'Database'
             },
-            readCapacity: 300,
+            readCapacity: 250,
             writeCapacity: 100,
             replicas: 3,
             queueLimit: 2000,
             x: 690,
             y: 210,
             name: 'Database'
+          },
+          {
+            id: 'c1',
+            type: 'cache',
+            name: 'Cache',
+            size: 'small'
           }
         ],
         wires: [
           [
             'traffic',
+            'lb1'
+          ],
+          [
+            'lb1',
             's1'
           ],
           [
             's1',
+            'db1'
+          ],
+          [
+            's1',
+            'c1'
+          ],
+          [
+            'c1',
             'db1'
           ]
         ]
@@ -205,7 +237,7 @@ export const BEST = {
   },
   'l4': {
     cafe: {
-      cost: 0.525,
+      cost: 0.625,
       design: {
         blocks: [
           {
@@ -261,7 +293,7 @@ export const BEST = {
       }
     },
     software: {
-      cost: 0.525,
+      cost: 0.625,
       design: {
         blocks: [
           {
@@ -319,7 +351,7 @@ export const BEST = {
   },
   'l5': {
     cafe: {
-      cost: 1.8,
+      cost: 1.95,
       design: {
         blocks: [
           {
@@ -342,7 +374,7 @@ export const BEST = {
               cafe: 'Espresso machine',
               software: 'Database'
             },
-            readCapacity: 300,
+            readCapacity: 100,
             writeCapacity: 50,
             replicas: 0,
             queueLimit: 5000,
@@ -354,7 +386,7 @@ export const BEST = {
             id: 'c1',
             type: 'cache',
             name: 'Cache',
-            size: 'small'
+            size: 'medium'
           },
           {
             id: 'q1',
@@ -398,7 +430,7 @@ export const BEST = {
       }
     },
     software: {
-      cost: 2.05,
+      cost: 2.2,
       design: {
         blocks: [
           {
@@ -421,7 +453,7 @@ export const BEST = {
               cafe: 'Espresso machine',
               software: 'Database'
             },
-            readCapacity: 300,
+            readCapacity: 100,
             writeCapacity: 50,
             replicas: 0,
             queueLimit: 5000,
@@ -433,7 +465,7 @@ export const BEST = {
             id: 'c1',
             type: 'cache',
             name: 'Cache',
-            size: 'small'
+            size: 'medium'
           },
           {
             id: 'q1',
