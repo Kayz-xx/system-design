@@ -109,6 +109,12 @@ function renderTopics() {
   const el = document.getElementById('topics');
   el.hidden = !S.topicsOpen;
   document.getElementById('app').inert = S.topicsOpen;
+  // Home always wears the café look, whatever chapter was open last; a chapter brings its own look back.
+  const look = S.topicsOpen ? 'cafe' : world();
+  if (document.documentElement.getAttribute('data-world') !== look) {
+    document.documentElement.setAttribute('data-world', look);
+    invalidateColors(); // the dots canvas caches the theme's colours
+  }
   if (!S.topicsOpen) return;
   const sel = [...LEVELS, ...UPCOMING].find((l) => l.id === S.topicSel) || LEVELS.find((l) => !chapterDone(l)) || LEVELS[0];
   el.innerHTML = `<section class="topics-panel" role="dialog" aria-modal="true" aria-labelledby="topics-title">
