@@ -58,6 +58,21 @@ function axis(dim, w, noun) {
   }
 }
 
+// The auditor's words about the design: a loading line while Gemini reads, the note once it passes the
+// check, and nothing if there is no key or the reply failed.
+function noteHtml(m, cafe) {
+  if (m.note && m.note.loading) return `<div class="hint auditor" aria-busy="true"><b>Auditor</b><span class="muted">${cafe ? 'The auditor is reading the red mornings…' : 'The auditor is reading the failing runs…'}</span></div>`;
+  if (m.note) return `<div class="hint auditor"><b>Auditor · ${cafe ? 'from the mildest red morning' : 'from the mildest failing run'}</b>${esc(m.note.text)}</div>`;
+  return '';
+}
+
+// The one action the map offers, shown in the card's pinned footer so it is never scrolled out of reach.
+export function mapActionsHtml(w) {
+  const m = currentMap();
+  if (!m || !m.mildest) return '';
+  return `<button class="btn primary" data-cell="mildest">${w === 'cafe' ? 'Watch the mildest morning that breaks it' : 'Watch the mildest failing scenario'}</button>`;
+}
+
 export function mapHtml(levelId, w) {
   const m = currentMap();
   if (!m) return '';
@@ -90,26 +105,29 @@ export function mapHtml(levelId, w) {
   let breaks = '';
   if (m.mildest) {
     breaks = rule ? `<p><b>${cafe ? 'It breaks when' : 'It fails when'}</b> ${esc(rule)}.</p>` : '';
-    if (m.note && m.note.loading) breaks += `<div class="hint" aria-busy="true"><b>Auditor</b><span class="muted">${cafe ? 'The auditor is reading the red mornings…' : 'The auditor is reading the failing runs…'}</span></div>`;
-    else if (m.note) breaks += `<div class="hint"><b>Auditor · ${cafe ? 'from the mildest red morning' : 'from the mildest failing run'}</b>${esc(m.note.text)}</div>`;
-    breaks += `<div class="btn-row"><button class="btn small" data-cell="mildest">${cafe ? 'Watch the mildest morning that breaks it' : 'Watch the mildest failing scenario'}</button></div>`;
+    breaks += noteHtml(m, cafe);
   }
   const off = m.tests.filter((t) => t.x === null);
   const fixedNote = Object.keys(lv.map.fixed).filter((k) => k === 'base').length
     ? (cafe ? `Every square has the busiest normal morning, ${fmt1(lv.map.fixed.base / SCALE)} ${noun} a minute.` : `Every square has the busiest normal traffic, ${fmtN(lv.map.fixed.base)} ${noun} a second.`)
     : '';
+  const intro = cafe ? 'Every square is one morning from the brief, from quiet to the worst case. The numbers are your tests.' : 'Every square is one scenario from the constraints, from easy to the worst case. The numbers are your tests.';
+  // The verdict and the explanation come first; the map is the evidence below them.
   return `<div class="survival" aria-label="Survival map">
-      <p><b class="mono">${m.survived}</b> of ${m.total} ${unit} on this map hold up.</p>
-      ${worst}
-      <div class="map" role="group" aria-label="${esc(`${m.survived} of ${m.total} ${unit} hold up. Across: ${ax.name}. Up: ${ay.name || 'with or without the shock'}.`)}">
-        ${ay.name ? `<span class="map-yname">${esc(ay.name)} ↑</span>` : ''}
-        <div class="map-grid">${rowsHtml}</div>
-        <div class="map-x"><span>${esc(ax.v(m.x.values[0]))}</span><span>${esc(ax.name)} →</span><span>${esc(ax.v(m.x.values[cols - 1]))}</span></div>
+      <div class="map-why">
+        <div class="map-verdict"><p><b class="mono">${m.survived}</b> of ${m.total} ${unit} on this map hold up.</p>${worst}</div>
+        ${breaks}
       </div>
-      <div class="map-key"><span><i class="ok"></i>${cafe ? 'Holds up' : 'Passes'}</span><span><i class="bad"></i>${cafe ? 'Breaks' : 'Fails'}</span><span><i class="test-key">2</i>A test from Submit</span></div>
-      <p class="muted">${esc(fixedNote)} ${cafe ? 'Tap a square to watch that morning.' : 'Select a square to replay that scenario.'}</p>
-      ${off.length ? `<p class="muted">${cafe ? 'Also tested, off the map:' : 'Also tested, off the map:'} ${off.map((t) => `Test ${t.n} · ${esc(t.name)} ${t.passed ? '✓' : '✗'}`).join(' · ')}</p>` : ''}
-      ${breaks}
+      <div class="map-block">
+        <p class="muted">${intro}</p>
+        <div class="map" role="group" aria-label="${esc(`${m.survived} of ${m.total} ${unit} hold up. Across: ${ax.name}. Up: ${ay.name || 'with or without the shock'}.`)}">
+          ${ay.name ? `<span class="map-yname">${esc(ay.name)} ↑</span>` : ''}
+          <div class="map-grid">${rowsHtml}<span class="ylab"></span><div class="map-x"><span>${esc(ax.v(m.x.values[0]))}</span><span>${esc(ax.name)} →</span><span>${esc(ax.v(m.x.values[cols - 1]))}</span></div></div>
+        </div>
+        <div class="map-key"><span><i class="ok"></i>${cafe ? 'Holds up' : 'Passes'}</span><span><i class="bad"></i>${cafe ? 'Breaks' : 'Fails'}</span><span><i class="test-key">2</i>A test from Submit</span></div>
+        <p class="muted">${esc(fixedNote)} ${cafe ? 'Tap a square to watch that morning.' : 'Select a square to replay that scenario.'}</p>
+        ${off.length ? `<p class="muted">Also tested, off the map: ${off.map((t) => `Test ${t.n} · ${esc(t.name)} ${t.passed ? '✓' : '✗'}`).join(' · ')}</p>` : ''}
+      </div>
     </div>`;
 }
 

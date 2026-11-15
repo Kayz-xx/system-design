@@ -6,8 +6,9 @@ import { askTutor, tutorRequest } from '../ai/tutor.js';
 import { SCALE, LEVELS } from '../levels/levels.js';
 import { S, L, W, world, key, scene, design, run, attempts, nameOf, stars, chapterDone, esc, fmtN, fmt1, fmtPct, runScenario, submission } from './state.js';
 import { FIELDS } from './worlds.js';
-import { bestHtml } from './best-panel.js';
-import { mapHtml } from './survival-panel.js';
+import { bestHtml, suggestHtml } from './best-panel.js';
+import { mapHtml, mapActionsHtml } from './survival-panel.js';
+import { explainHtml, explained } from './review-panel.js';
 import { whyHtml } from './why-panel.js';
 import { connectionGuide } from './build-guide.js';
 
@@ -194,9 +195,8 @@ export function renderSide() {
     html = submitHtml(lv, w, false);
   } else if (phase === 'map' && sub && !sub.stale) {
     html = `<section class="sheet map-sheet" aria-label="Survival map" tabindex="-1">${closeTask}<h2>${cafe ? 'Where does your shop hold up?' : 'Where does your design hold up?'}</h2>
-      <p>${cafe ? 'Every square is one morning from the brief, from quiet to the worst case. The numbers are your tests.' : 'Every square is one scenario from the constraints, from easy to the worst case. The numbers are your tests.'}</p>
       ${mapHtml(lv.id, w)}
-      <div class="btn-row"><button class="btn" id="submission-open">← Back to results</button></div></section>`;
+      ${(() => { const watch = mapActionsHtml(w); return `<div class="btn-row">${watch}<button class="${watch ? 'text-btn' : 'btn'}" id="submission-open">← Back to results</button></div>`; })()}</section>`;
   } else if (phase === 'submission' && sub && !sub.stale) {
     html = submissionHtml(lv, w, sub);
   } else if (phase === 'review' && done && last) {
@@ -218,7 +218,12 @@ export function renderSide() {
       html = `<section class="task" aria-label="Build experiment"><div class="task-copy"><div class="eyebrow">${atts.length ? 'Try something different' : 'Your move'}</div><h2>${empty ? cafe ? 'Every café needs a barista.' : 'Start with a server.' : cafe ? 'Make the morning work.' : 'Make the system work.'}</h2><p>${empty ? cafe ? 'Place one on the floor, then connect it to the door.' : 'Add a server and connect it to incoming requests.' : 'Tap Adjust settings on an item to change how it works.'}</p></div><div class="task-actions"><button class="btn primary" id="${empty ? 'equipment-open' : 'predict-open'}">${empty ? cafe ? 'Choose equipment →' : 'Add a component →' : cafe ? 'Predict & try →' : 'Predict & run →'}</button>${atts.length ? `<button class="text-btn" id="submit-open">${cafe ? 'Try a full week' : 'Test all scenarios'}</button>` : ''}${done ? '<button class="text-btn" id="review-open">Last run</button>' : ''}</div></section>`;
     }
   }
-  document.getElementById('side').innerHTML = html;
+  // A late auditor note re-renders the sheet; keep the reader where they were.
+  const side = document.getElementById('side'), prev = side.querySelector?.('.sheet');
+  const top = prev ? prev.scrollTop : 0, label = prev && prev.getAttribute('aria-label');
+  side.innerHTML = html;
+  const next = side.querySelector?.('.sheet');
+  if (next && label && next.getAttribute('aria-label') === label) next.scrollTop = top;
 }
 
 const checkWords = (w) => (w === 'cafe'
@@ -273,9 +278,11 @@ function submissionHtml(lv, w, sub) {
       <h2>${sub.accepted ? w === 'cafe' ? 'A café for every morning.' : 'A system that holds up.' : w === 'cafe' ? 'One morning needs another look.' : 'One scenario needs another look.'}</h2>
       <p>${sub.passedCount} of ${sub.total} passed. ${guessed}</p>
       ${sub.failed ? `<p><b>${esc(sub.failed.name)}.</b> ${esc(sub.failed.story)} <span class="wrong">${esc(why(sub.failed))}.</span></p>` : ''}
+      ${sub.failed ? suggestHtml(lv.id, w, design()) : ''}
       ${sub.failed ? whyFailedHtml(sub, w) : ''}
-      ${sub.accepted ? whyHtml(lv, w) : ''}
-      ${sub.accepted ? bestHtml(lv.id, w, sub.results[0].log.result.costPerHour) : ''}
+      ${sub.accepted ? explainHtml(sub, w) : ''}
+      ${sub.accepted && explained(sub) ? whyHtml(lv, w) : ''}
+      ${sub.accepted && explained(sub) ? bestHtml(lv.id, w, sub.results[0].log.result.costPerHour) : ''}
       <div class="btn-row">${next || `<button class="btn primary" id="return-build">${w === 'cafe' ? 'Back to the floor →' : 'Edit the system →'}</button>`}<button class="text-btn" id="map-open">Where does it hold? →</button>${sub.accepted && w === 'software' ? '<button class="text-btn" data-open-topics>All topics</button>' : ''}${sub.failed ? `<button class="text-btn" data-watch="${esc(sub.failed.id)}">${w === 'cafe' ? 'Watch this morning' : 'Watch this scenario'}</button>` : ''}</div>
       <details><summary>${w === 'cafe' ? 'Open your notebook' : 'Review test results'}</summary><ol class="tests">${sub.results.map((t) => `<li class="${t.passed ? 'ok' : 'bad'}">
           <span class="mark" aria-label="${t.passed ? 'Passed' : 'Failed'}">${t.passed ? '✓' : '✗'}</span>

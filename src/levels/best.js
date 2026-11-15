@@ -1,7 +1,7 @@
 // The cheapest design that passes every test of a scene, found by searching the designs a learner can build
 // from the palette (same blocks, same setting steps). Pure and deterministic. The results are stored in
 // best-designs.js so the browser never has to search; best.test.js checks the stored answers are still right.
-import { blockCost, designCost, simulate } from '../sim/sim.js';
+import { designCost, simulate } from '../sim/sim.js';
 import { suite } from './grade.js';
 import { LEVELS, LIMITS } from './levels.js';
 
@@ -53,7 +53,6 @@ function shapes(level, world) {
 
   // Nothing over budget can be accepted, so a shape is skipped when even its slowest database is too dear.
   const budget = level.scenes[world].scenario.targets.cost + 1e-9;
-  const price = (b) => (b ? blockCost(b) : 0);
   const out = [];
   for (const s of servers) for (const c of caches) for (const q of queues) for (const db of dbs) {
     const make = ({ readCapacity, replicas }) => {

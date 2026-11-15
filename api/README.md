@@ -41,5 +41,11 @@ The auditor's note on the survival map. Body: `{ world, level, design }`. The se
 mornings matching the failure rule break the design, using the log of the mildest failing morning. The reply
 passes the same check as the tutor's (`rejectReason`).
 
+The note is a diagnosis only: what breaks and why. The prompt forbids fixes, settings, numbers and questions, and
+`diagnosisOnly()` (`src/ai/auditor.js`) drops any sentence that still asks a question or tells the learner what
+to do. A reply with nothing left is refused (502). A way to fix the design is not written by the model: the
+result card's "Show a way to fix it" comes from `src/levels/suggest.js`, which finds the cheapest single change
+that passes every test, or else the stored best design, and grades it with the simulator before showing it.
+
 - 200 `{ text, survived }`, where `text` is `null` when nothing broke (no model call is made).
 - 400 bad input, 503 no key, 502 model error or failed check, 504 timeout. The card then shows no note.

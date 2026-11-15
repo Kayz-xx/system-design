@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { auditNoteResponse } from '../../api/audit/note.js';
-import { prepareAuditor } from './auditor.js';
+import { prepareAuditor, diagnosisOnly } from './auditor.js';
 import { LEVELS } from '../levels/levels.js';
 
 const env = { GEMINI_API_KEY: 'test-key' };
@@ -20,7 +20,9 @@ test('the prompt holds the redrawn map: the rule and the mildest failing run', (
   assert.match(p.prompt.input, /survived 37 of 42 scenarios\. The worst case broke it/);
   assert.match(p.prompt.input, /PATTERN: it breaks when normal traffic is 1,060 requests a second or more and the cache restarts empty/);
   assert.match(p.prompt.input, /MILDEST FAILING RUN:\n- /);
-  assert.match(p.prompt.instructions, /Do not say what number to set/);
+  assert.match(p.prompt.instructions, /critique, not a hint/);
+  assert.match(p.prompt.instructions, /do not ask a question/);
+  assert.doesNotMatch(p.prompt.instructions, /points the learner at where to look/);
 });
 
 test('the client cannot claim a better map: numbers come from the design only', async () => {
@@ -49,4 +51,18 @@ test('a good note is returned; bad input, no key, failures and unchecked words a
   assert.equal((await auditNoteResponse(b, { env, fetchImpl: async () => ({ ok: false, json: async () => ({}) }) })).status, 502);
   const sw = await auditNoteResponse(b, { env, fetchImpl: gemini('The server is overloaded by requests during the spike, so add capacity.') });
   assert.equal(sw.status, 502, 'software words in the coffee shop are refused');
+});
+
+test('a note only diagnoses: questions and advice are stripped, and a reply with nothing left is refused', async () => {
+  const keep = 'When the cache restarts empty, 1,060 reads a second reach the database, which handles 900. The extra requests add to the queue, so waits grow.';
+  assert.equal(diagnosisOnly(`${keep} How could you increase the database's read capacity?`), keep);
+  assert.equal(diagnosisOnly(`${keep} You should add more replicas. Try a bigger cache.`), keep);
+  assert.equal(diagnosisOnly('Consider adding a replica. What if the cache were larger?'), '');
+  assert.equal(diagnosisOnly(''), '');
+  const b = { world: 'software', level: 'l3', design: l3() };
+  const ok = await auditNoteResponse(b, { env, fetchImpl: gemini(`${keep} How could you increase the database's read capacity?`) });
+  assert.equal(ok.status, 200);
+  assert.equal(ok.json.text, keep);
+  const advice = await auditNoteResponse(b, { env, fetchImpl: gemini('You should add more replicas. How many would it take?') });
+  assert.equal(advice.status, 502, 'advice alone is not shown');
 });

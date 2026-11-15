@@ -199,6 +199,11 @@ test('an accepted submission is compared with the best possible cost', () => {
   renderLesson({ level: 'l2', edit: (d) => { d.blocks[1].copies = 4; d.blocks[1].capacity = 110; } }, (render) => {
     assert.equal(submit('l2', 'cafe', S.designs.l2.cafe).accepted, true);
     let html = render();
+    assert.ok(html.includes('Walk me through your shop.'), 'the interview step comes first');
+    assert.ok(!html.includes('aria-label="Why it worked"') && !html.includes('Running cost against the best shop'), 'the reference answer waits for the explanation');
+    S.submits['l2:cafe'].explain = { status: 'skipped' };
+    html = render();
+    assert.ok(!html.includes('Walk me through your shop.'));
     assert.ok(html.includes('Running cost against the best shop'));
     assert.ok(html.includes('$138/h') && html.includes('$130/h'));
     assert.ok(html.includes('Within 6% of the best'));
@@ -208,8 +213,28 @@ test('an accepted submission is compared with the best possible cost', () => {
     assert.ok(html.includes('one of your 4 baristas went home for 90 minutes. The other 3 still serve 6.6 a minute'), html.match(/Redundancy[^<]*<\/b><span>([^<]*)/)?.[1]);
     Object.assign(S.designs.l2.cafe.blocks[1], { copies: 3, capacity: 150 });
     submit('l2', 'cafe', S.designs.l2.cafe);
+    S.submits['l2:cafe'].explain = { status: 'skipped' };
     html = render();
     assert.ok(html.includes('Best possible cost'));
     assert.ok(!html.includes('Show the cheapest shop'));
+  });
+});
+
+test('the reviewed reasoning shows each claim with its verdict, then the interviewer question', () => {
+  renderLesson({ level: 'l2', edit: (d) => { d.blocks[1].copies = 4; d.blocks[1].capacity = 110; } }, (render) => {
+    submit('l2', 'cafe', S.designs.l2.cafe);
+    S.submits['l2:cafe'].explain = { status: 'done', text: 'x', review: {
+      claims: [
+        { said: 'a spare barista covers the sick day', verdict: 'holds', because: 'The other 3 still serve 6.6 a minute.' },
+        { said: 'one big barista is enough', verdict: 'untested', because: 'No morning here loses the only barista.' }
+      ],
+      question: 'What does the spare barista cost on a quiet day?'
+    } };
+    const html = render();
+    assert.ok(html.includes('Your reasoning, checked against the run'));
+    assert.ok(html.includes('class="claim holds"') && html.includes('Holds up'));
+    assert.ok(html.includes('class="claim untested"') && html.includes('Not tested here'));
+    assert.ok(html.includes('Interviewer · one more thing') && html.includes('What does the spare barista cost on a quiet day?'));
+    assert.ok(html.includes('Running cost against the best shop'), 'the reference answer follows the feedback');
   });
 });

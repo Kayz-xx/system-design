@@ -74,9 +74,3 @@ export function whyHtml(lv, w) {
   return `<section class="why-worked" aria-label="Why it worked"><div class="label">Why it worked</div><p>${lead}</p><ol>${items}</ol></section>`;
 }
 
-// For tests: the plain lines without markup.
-export function whyLines(lv, w) {
-  const out = whyItWorked(simDesign(design()), lv.id, w);
-  return out.facts.map((f) => line(f, w === 'cafe', W(), out.scenario));
-}
-

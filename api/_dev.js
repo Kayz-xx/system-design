@@ -9,10 +9,11 @@ import { fileURLToPath } from 'node:url';
 import tutor from './tutor.js';
 import chaosPlan from './chaos/plan.js';
 import auditNote from './audit/note.js';
+import review from './review.js';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const PORT = Number(process.env.PORT) || 5173;
-const ROUTES = { '/api/tutor': tutor, '/api/chaos/plan': chaosPlan, '/api/audit/note': auditNote };
+const ROUTES = { '/api/tutor': tutor, '/api/chaos/plan': chaosPlan, '/api/audit/note': auditNote, '/api/review': review };
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png' };
 
 const envFile = join(ROOT, '.env');

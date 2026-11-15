@@ -9,6 +9,8 @@ import { fx, SPEED, startFx, sizeCanvas, resetFx, invalidateColors } from './fx.
 import { renderRun, renderRunBody, tickFromPointer } from './run-panel.js';
 import { renderSide, predScale, predError } from './coach.js';
 import { drawMap, mapMorning, cellLabel } from './survival-panel.js';
+import { rememberSuggest } from './best-panel.js';
+import { askReview } from '../ai/tutor.js';
 import { connectionGuide, applyConnectionPlan } from './build-guide.js';
 
 /* ---------- Header and palette ---------- */
@@ -27,7 +29,7 @@ function renderTabs() {
 function renderMission() {
   const sc = scene().scenario, cafe = world() === 'cafe';
   const brand = document.querySelector('.brand');
-  brand.innerHTML = `<span aria-hidden="true">${cafe ? '☕' : icon('software', 'server')}</span><b>Little Systems <em>${cafe ? 'Café' : 'Lab'}</em></b>`;
+  brand.innerHTML = `<img class="brand-logo" src="assets/brand/little-systems-pixel.png" width="56" height="56" alt=""><b>Little Systems <em>${cafe ? 'Café' : 'Lab'}</em></b>`;
   brand.setAttribute('aria-label', `Little Systems ${cafe ? 'Café' : 'Lab'} home`);
   document.title = cafe ? 'Little Systems Café' : 'Little Systems Lab';
   document.querySelector('.skip-link').textContent = cafe ? 'Skip to the café floor' : 'Skip to the system';
@@ -58,7 +60,6 @@ function progressOf(l) {
   return { st, done, label };
 }
 
-function topicDetailHtml(l) {
 // A chapter we have not built yet: what it will teach and which foundations it combines, with no Start.
 function soonDetailHtml(u) {
   const ready = u.principles.map((x) => LEVELS.find((l) => l.track === 'foundations' && l.principles?.length === 1 && l.principles[0] === x));
@@ -69,8 +70,9 @@ function soonDetailHtml(u) {
     <button class="btn primary" disabled>Coming soon</button>`;
 }
 
-  const t = l.topic, p = progressOf(l), sw = l.firstScene === 'software';
+function topicDetailHtml(l) {
   if (!l.scenes) return soonDetailHtml(l);
+  const t = l.topic, p = progressOf(l), sw = l.firstScene === 'software';
   const opensIn = sw ? 'Software lab' : 'Coffee shop, then software';
   const pairs = l.capstone
     ? `<dl class="topic-facts"><dt>Uses</dt><dd class="chips">${l.principles.map((x) => `<span>${esc(PRINCIPLE_NAME[x])}</span>`).join('')}</dd><dt>Opens in</dt><dd>${opensIn}</dd><dt>Trade-off</dt><dd>${esc(t.tradeoff.software)}</dd></dl>`
@@ -111,7 +113,7 @@ function renderTopics() {
   const sel = [...LEVELS, ...UPCOMING].find((l) => l.id === S.topicSel) || LEVELS.find((l) => !chapterDone(l)) || LEVELS[0];
   el.innerHTML = `<section class="topics-panel" role="dialog" aria-modal="true" aria-labelledby="topics-title">
       <header class="topics-head">
-        <div><p class="eyebrow">Little Systems</p><h1 id="topics-title">What do you want to learn?</h1></div>
+        <div class="topics-brand"><img class="topics-logo" src="assets/brand/little-systems-pixel.png" width="96" height="96" alt=""><div><p class="eyebrow">Little Systems</p><h1 id="topics-title">What do you want to learn?</h1></div></div>
         ${S.picked ? '<button class="icon-btn close" id="topics-close" aria-label="Back to the chapter">×</button>' : ''}
       </header>
       <div class="topics-body">
@@ -373,6 +375,27 @@ function startSubmit() {
   else renderAll();
 }
 
+// The interview step: send the learner's explanation of a passing design to be checked against the simulator.
+// The result is kept on the submission, so a new Submit starts a fresh one.
+function sendExplanation() {
+  const sub = submission();
+  if (!sub || !sub.accepted) return;
+  const text = ((document.getElementById('explain-text') || {}).value || '').trim();
+  if (text.length < 20) {
+    const note = document.getElementById('explain-note');
+    if (note) note.textContent = 'A couple of sentences, please.';
+    return;
+  }
+  sub.explain = { status: 'loading', text };
+  renderSide();
+  const d = design();
+  askReview({ world: world(), level: S.level, design: { blocks: d.blocks, wires: d.wires }, explanation: text }).then((out) => {
+    if (submission() !== sub) return;
+    sub.explain = out.ok ? { status: 'done', text, review: out } : { status: 'error', text };
+    renderSide();
+  });
+}
+
 function watchTest(t) {
   S.sel = null; S.labPhase[key()] = 'submission';
   play(key(), t.log, false, { scenario: t.scenario, kind: 'test', label: `Test ${t.n} · ${t.name}` });
@@ -550,6 +573,8 @@ document.addEventListener('click', (e) => {
   }
   if (id === 'run-btn') { S.banner = null; renderOverlay(); startRun(); return; }
   if (id === 'submit-btn') { S.banner = null; renderOverlay(); startSubmit(); return; }
+  if (id === 'explain-send') { sendExplanation(); return; }
+  if (id === 'explain-skip') { const sub = submission(); if (sub) { sub.explain = { status: 'skipped' }; renderSide(); } return; }
   const watch = e.target.closest('[data-watch]');
   if (watch) {
     const t = submission()?.results.find((x) => x.id === watch.dataset.watch);
@@ -582,6 +607,7 @@ document.addEventListener('click', (e) => {
 
 document.addEventListener('input', (e) => {
   const t = e.target;
+  if (t.id === 'explain-text') { const sub = submission(); if (sub) sub.explain = { status: 'ask', text: t.value }; return; }
   if (t.id === 'p-tests') { S.subGuess[key()] = t.value; updateRunReadiness(); return; }
   if (t.id === 'p-block' || t.id === 'p-val') {
     const p = S.pred[key()] = S.pred[key()] || {};
@@ -748,6 +774,10 @@ document.addEventListener('keyup', (e) => {
 });
 
 document.addEventListener('toggle', (e) => {
+  if (e.target.classList && e.target.classList.contains('suggest')) {
+    rememberSuggest(e.target.open);
+    if (e.target.open) e.target.scrollIntoView({ block: 'nearest', behavior: reducedMotion() ? 'auto' : 'smooth' });
+  }
   if (e.target.id === 'analysis-drawer' && e.target.open) renderRunBody();
   if (e.target.matches('.chapter-menu, #equipment-menu, #connection-tools') && e.target.open) {
     document.querySelectorAll('.chapter-menu, #equipment-menu, #connection-tools').forEach((menu) => { if (menu !== e.target) menu.open = false; });

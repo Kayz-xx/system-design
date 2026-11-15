@@ -2,8 +2,9 @@
 // The best cost comes from src/levels/best-designs.js, found by searching every design the palette can build.
 import { BEST } from '../levels/best-designs.js';
 import { describe } from '../levels/best.js';
+import { suggestChange, suggestKey } from '../levels/suggest.js';
 import { SCALE } from '../levels/levels.js';
-import { W, esc } from './state.js';
+import { S, W, design, world, esc } from './state.js';
 
 export function bestScore(levelId, world, cost) {
   const best = BEST[levelId] && BEST[levelId][world];
@@ -31,4 +32,25 @@ export function bestHtml(levelId, world, cost) {
       <p class="${s.optimal ? 'right' : 'muted'}">${esc(verdict)}</p>
       ${s.optimal ? '' : `<details><summary>${cafe ? 'Show the cheapest shop' : 'Show the cheapest design'}</summary><p>${esc(cap(describe(s.best.design, world, SCALE)))}.</p></details>`}
     </div>`;
+}
+
+// Which design's suggestion the learner opened, so the card can re-render (the auditor's note arrives late)
+// without closing it. A new design starts closed again.
+let openKey = null;
+export function rememberSuggest(open) { openKey = open ? suggestKey(design(), S.level, world()) : null; }
+
+// "Show a way to fix it", under a failed submission. Closed until the learner asks. The change comes from the
+// simulator (src/levels/suggest.js), never from the auditor.
+export function suggestHtml(levelId, world, design) {
+  const s = suggestChange(design, levelId, world);
+  if (!s) return '';
+  const cafe = world === 'cafe', Wd = W();
+  const cap = (x) => x.charAt(0).toUpperCase() + x.slice(1);
+  const lead = s.kind === 'tweak'
+    ? (cafe ? 'Change this one thing and your shop survives every morning in the tests:' : 'Change this one thing and your design passes every test:')
+    : (cafe ? 'No single change is enough. The cheapest shop that survives every test is built differently:' : 'No single change is enough. The cheapest design that passes every test is built differently:');
+  const rows = s.rows.map((r) => (r.yours && r.best
+    ? `<li><span class="from">${esc(cap(r.yours))}</span><span class="arrow" aria-hidden="true">↓</span><b class="to">${esc(cap(r.best))}</b></li>`
+    : r.best ? `<li><b class="to">Add: ${esc(r.best)}</b></li>` : `<li><span class="from">Not needed: ${esc(r.yours)}</span></li>`)).join('');
+  return `<details class="suggest"${openKey === suggestKey(design, levelId, world) ? ' open' : ''}><summary>Show a way to fix it</summary><p>${lead}</p><ul>${rows}</ul><p class="muted">${cafe ? 'Running cost' : 'Cost'} ${Wd.cost(s.cost)}. Checked against every test.</p></details>`;
 }
