@@ -1,4 +1,4 @@
-// System Design Sandbox simulator.
+// Acumen simulator.
 // A deterministic pure function: simulate(design, scenario) -> run log.
 // One tick is one simulated second. It counts requests per second; it does not follow single requests.
 

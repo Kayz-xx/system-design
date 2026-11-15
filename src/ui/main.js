@@ -29,9 +29,9 @@ function renderTabs() {
 function renderMission() {
   const sc = scene().scenario, cafe = world() === 'cafe';
   const brand = document.querySelector('.brand');
-  brand.innerHTML = `<img class="brand-logo" src="assets/brand/little-systems-pixel.png" width="56" height="56" alt=""><b>Little Systems <em>${cafe ? 'Café' : 'Lab'}</em></b>`;
-  brand.setAttribute('aria-label', `Little Systems ${cafe ? 'Café' : 'Lab'} home`);
-  document.title = cafe ? 'Little Systems Café' : 'Little Systems Lab';
+  brand.innerHTML = `<img class="brand-logo" src="assets/brand/acumen-pixel.png" width="56" height="56" alt=""><b>Acumen <em>${cafe ? 'Café' : 'Lab'}</em></b>`;
+  brand.setAttribute('aria-label', `Acumen ${cafe ? 'Café' : 'Lab'} home`);
+  document.title = cafe ? 'Acumen Café' : 'Acumen Lab';
   document.querySelector('.skip-link').textContent = cafe ? 'Skip to the café floor' : 'Skip to the system';
   document.getElementById('main').setAttribute('aria-label', cafe ? 'Interactive café floor' : 'Interactive system topology');
   document.querySelector('.board-scroll').setAttribute('aria-label', cafe ? 'Café floor. Scroll to explore, or use Fit floor.' : 'System topology. Scroll to explore, or use Fit view.');
@@ -113,7 +113,7 @@ function renderTopics() {
   const sel = [...LEVELS, ...UPCOMING].find((l) => l.id === S.topicSel) || LEVELS.find((l) => !chapterDone(l)) || LEVELS[0];
   el.innerHTML = `<section class="topics-panel" role="dialog" aria-modal="true" aria-labelledby="topics-title">
       <header class="topics-head">
-        <div class="topics-brand"><img class="topics-logo" src="assets/brand/little-systems-pixel.png" width="96" height="96" alt=""><div><p class="eyebrow">Little Systems</p><h1 id="topics-title">What do you want to learn?</h1></div></div>
+        <div class="topics-brand"><img class="topics-logo" src="assets/brand/acumen-pixel.png" width="96" height="96" alt=""><div><p class="eyebrow">Acumen</p><h1 id="topics-title">What do you want to learn?</h1></div></div>
         ${S.picked ? '<button class="icon-btn close" id="topics-close" aria-label="Back to the chapter">×</button>' : ''}
       </header>
       <div class="topics-body">

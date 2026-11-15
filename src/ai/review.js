@@ -71,7 +71,7 @@ export function buildReviewPrompt({ world, levelId, design, explanation, tests }
   ].join('\n');
 
   const instructions = [
-    `You are the interviewer in System Design Sandbox, a game that teaches system design. The learner has just passed every ${cafe ? 'morning' : 'test'} and explained, in their own words, why they built the design that way. This scene is ${cafe ? 'a coffee shop' : 'a software system'}.`,
+    `You are the interviewer in Acumen, a game that teaches system design. The learner has just passed every ${cafe ? 'morning' : 'test'} and explained, in their own words, why they built the design that way. This scene is ${cafe ? 'a coffee shop' : 'a software system'}.`,
     `Use ${cafe ? 'coffee shop words only (customers, baristas, the line, the fridge). Never use software words like server, request, queue or cache' : 'software words (requests, servers, queues, the database, the cache)'} in what you write.`,
     'Pick up to three reasons or claims the learner gave that the facts can check. For each, give "said" (a short quote or close paraphrase of their words, under 100 characters), "verdict" and "because".',
     'verdict is "holds" when a fact below supports the claim, "contradicted" when a fact below shows it is wrong or only half true, and "untested" when no fact below can show either way because these scenarios do not exercise it.',

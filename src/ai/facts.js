@@ -168,7 +168,7 @@ export function buildTutorPrompt({ world, levelId, design, scenario, log, predic
   const names = mentionable(design, log);
 
   const instructions = [
-    `You are the tutor in System Design Sandbox, a game that teaches system design. This scene is ${w.cafe ? 'a coffee shop' : 'a software system'}.`,
+    `You are the tutor in Acumen, a game that teaches system design. This scene is ${w.cafe ? 'a coffee shop' : 'a software system'}.`,
     `Use ${w.cafe ? 'coffee shop words only (customers, baristas, the line, walking out). Never use software words like server, request, queue or cache' : 'software words (requests, servers, queues, the database, the cache)'}.`,
     'Write at most three short, plain sentences a first-year student would follow. No lists, no markdown, no greetings.',
     'Only state facts that appear in RUN LOG or RESULT below. Do not invent events, times or numbers.',

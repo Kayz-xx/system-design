@@ -1,4 +1,4 @@
-# System Design Sandbox
+# Acumen
 
 Learn to see the system inside a business. Start with a coffee shop.
 

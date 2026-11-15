@@ -46,7 +46,7 @@ function chaosPrompt(p) {
   const cafe = p.world === 'cafe';
   const missed = (r) => Object.entries(r.checks).filter(([, ok]) => !ok).map(([k]) => k).join(' and ') || 'nothing';
   const instructions = [
-    `You are the chaos agent in System Design Sandbox. The learner's ${cafe ? 'coffee shop' : 'system'} passed. Your job is to pick the incident from CANDIDATES that would most plausibly happen to this ${cafe ? 'coffee shop on a real morning' : 'system in production'}, and tell it.`,
+    `You are the chaos agent in Acumen. The learner's ${cafe ? 'coffee shop' : 'system'} passed. Your job is to pick the incident from CANDIDATES that would most plausibly happen to this ${cafe ? 'coffee shop on a real morning' : 'system in production'}, and tell it.`,
     'Every candidate is already proven to break the design. Prefer ordinary, everyday incidents over extreme ones.',
     `Write the story in two short sentences, present tense, ${cafe ? 'in coffee shop words only (customers, baristas, the line, the fridge). Never use software words' : 'in plain software words'}.`,
     'Do not use any digits, times or numbers in the story; the game shows the exact numbers next to it.',

@@ -1,4 +1,4 @@
-# System Design Sandbox — Design
+# Acumen — Design
 
 Nov 14, 2026 · @Kayden · revision 2 (decisions applied)
 
@@ -43,7 +43,7 @@ Open, from this revision:
 
 ## Summary
 
-System Design Sandbox teaches the system design that CS degrees skip. A student builds a system from five blocks, predicts how it will fail, watches a simulator break it, and fixes it.
+Acumen teaches the system design that CS degrees skip. A student builds a system from five blocks, predicts how it will fail, watches a simulator break it, and fixes it.
 
 It makes the scaling path of the [System Design Primer](https://github.com/donnemartin/system-design-primer) runnable. The simulator decides what is right. AI writes flawed designs for the learner to critique and explains what the simulator already showed.
 

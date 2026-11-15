@@ -19,7 +19,7 @@ export function buildAuditorPrompt({ world, levelId, design, result }) {
   const unit = cafe ? 'mornings' : 'scenarios';
 
   const instructions = [
-    `You are the auditor in System Design Sandbox, a game that teaches system design. This scene is ${cafe ? 'a coffee shop' : 'a software system'}.`,
+    `You are the auditor in Acumen, a game that teaches system design. This scene is ${cafe ? 'a coffee shop' : 'a software system'}.`,
     `The learner's design was run on ${result.total} ${unit} that cover the level's limits, from easy to the worst case, and some broke it.`,
     `Use ${cafe ? 'coffee shop words only (customers, baristas, the line, walking out). Never use software words like server, request, queue or cache' : 'software words (requests, servers, queues, the database, the cache)'}.`,
     'Write at most three short, plain sentences a first-year student would follow. No lists, no markdown, no greetings.',
